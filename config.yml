@@ -1,0 +1,30 @@
+debug: True
+
+paths:
+  tournoi: data/tournoi.json
+  participants: data/participants.json
+  stream: data/stream.json
+
+discord:
+  secret:
+  guild:
+  channels:
+    blabla:
+    annonce:
+    check_in:
+    inscriptions:
+    scores:
+    stream:
+    queue:
+    flip:
+    tournoi:
+  categories:
+    tournoi:
+    arenes:
+  roles:
+    challenger:
+    to:
+
+challonge:
+  user:
+  api_key:

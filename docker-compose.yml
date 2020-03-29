@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  my-bot:
+    build: .
+    container_name: darkrai
+    restart: unless-stopped
