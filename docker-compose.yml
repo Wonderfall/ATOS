@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  my-bot:
+  atos:
     build: .
-    container_name: darkrai
+    container_name: atos
     restart: unless-stopped
