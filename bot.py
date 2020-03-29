@@ -120,7 +120,7 @@ async def on_ready():
     print(f"           A.T.O.S. {version}        ")
     print(f"        Automated TO for Smash       ")
     print(f"                                     ")
-    print(f"Logged on Disicord as...             ")
+    print(f"Logged on Discord as...              ")
     print(f"User : {bot.user.name}               ")
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
@@ -131,7 +131,7 @@ async def on_ready():
 ### A chaque arrivée de membre
 @bot.event
 async def on_member_join(member):
-    await bot.get_channel(blabla_channel_id).send(f"{server_logo} Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>.\n{welcome_text}")
+    await bot.get_channel(blabla_channel_id).send(f"{server_logo} Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>. {welcome_text}")
 
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
