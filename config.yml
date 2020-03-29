@@ -1,3 +1,4 @@
+# version 3.12
 debug: True
 
 paths:
@@ -18,12 +19,18 @@ discord:
     queue:
     flip:
     tournoi:
+    ruleset:
+    deroulement:
+    faq:
+    resolution:
   categories:
     tournoi:
     arenes:
   roles:
     challenger:
     to:
+  emojis:
+    logo:
 
 challonge:
   user:

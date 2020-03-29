@@ -5,15 +5,13 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
-
 #### Version
-version                             = "3.11"
+version                             = "3.12"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
 participants_path                   = config["paths"]["participants"]
 stream_path                         = config["paths"]["stream"]
-
 
 #### Discord IDs
 guild_id                            = config["discord"]["guild"]
@@ -29,6 +27,12 @@ queue_channel_id                    = config["discord"]["channels"]["queue"]
 flip_channel_id                     = config["discord"]["channels"]["flip"]
 tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
 
+### Info, non-interactive channels
+ruleset_channel_id                  = config["discord"]["channels"]["ruleset"]
+deroulement_channel_id              = config["discord"]["channels"]["deroulement"]
+faq_channel_id                      = config["discord"]["channels"]["faq"]
+resolution_channel_id               = config["discord"]["channels"]["resolution"]
+
 ### Server categories
 tournoi_cat_id                      = config["discord"]["categories"]["tournoi"]
 arenes_cat_id                       = config["discord"]["categories"]["arenes"]
@@ -38,6 +42,9 @@ arenes                              = discord.Object(id=arenes_cat_id)
 challenger_id                       = config["discord"]["roles"]["challenger"]
 to_id                               = config["discord"]["roles"]["to"]
 
+### Custom emojis
+server_logo                         = config["discord"]["emojis"]["logo"]
+
 #### Challonge
 challonge_user                      = config["challonge"]["user"]
 
@@ -45,10 +52,9 @@ challonge_user                      = config["challonge"]["user"]
 bot_secret                          = config["discord"]["secret"]
 challonge_api_key                   = config["challonge"]["api_key"]
 
-
-### Some (hardcoded, yes...) texts
+### Texts
 welcome_text=f"""
-Je t'invite à consulter le channel <#689169781089370207> et <#689165233217994754>, et également <#689184939383586818> si tu souhaites t'inscrire à un tournoi. N'oublie pas de consulter les <#689164954905083952> régulièrement, et de poser tes questions aux TOs sur <#689165105652432985>. Enfin, amuse-toi bien.
+Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi. N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>. Enfin, amuse-toi bien.
 """
 
 help_text=f"""
@@ -57,7 +63,7 @@ help_text=f"""
 - `!bracket` : obtenir le lien du bracket en cours.
 
 :video_game: **Commandes joueur :**
-- `!dq` : se retirer du tournoi avant/après que celui-ci ait commencé.
+- `!dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
 - `!flip` : pile/face, fonctionne uniquement dans <#{flip_channel_id}>.
 - `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
 
@@ -106,13 +112,15 @@ def int_keys(ordered_pairs):
         result[key] = value
     return result
 
+
 #### Notifier de l'initialisation
 @bot.event
 async def on_ready():
     print(f"-------------------------------------")
-    print(f"          Darkrai {version}          ")
+    print(f"           A.T.O.S. {version}        ")
+    print(f"        Automated TO for Smash       ")
     print(f"                                     ")
-    print(f"Logged as...                         ")
+    print(f"Logged on Disicord as...             ")
     print(f"User : {bot.user.name}               ")
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
@@ -123,7 +131,7 @@ async def on_ready():
 ### A chaque arrivée de membre
 @bot.event
 async def on_member_join(member):
-    await bot.get_channel(blabla_channel_id).send(f"<:smashvoid:689537348689592354> Bienvenue à toi sur le serveur Smash Void, <@{member.id}>. {welcome_text}")
+    await bot.get_channel(blabla_channel_id).send(f"{server_logo} Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>.\n{welcome_text}")
 
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
@@ -237,7 +245,7 @@ async def reload_tournament():
 async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    annonce = (f"<:smashvoid:689537348689592354> **{tournoi['name']}** \n"
+    annonce = (f"{server_logo} **{tournoi['name']}** \n"
                f":arrow_forward: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')} \n"
                f":arrow_forward: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')} \n"
                f":arrow_forward: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)* \n"
@@ -256,7 +264,7 @@ async def annonce_inscription():
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
     await annonce_msg.add_reaction("✅")
-    await bot.get_channel(annonce_channel_id).send(f"<:smashvoid:689537348689592354> Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! Ce tournoi aura lieu le **{tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}**.")
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! Ce tournoi aura lieu le **{tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}**.")
 
 
 ### Inscription
@@ -420,7 +428,7 @@ async def check_tournament_state():
 
     ### Si le tournoi n'a pas encore commencé
     if (tournoi["statut"] == "pending") and (bracket['state'] != "pending"):
-        await bot.get_channel(annonce_channel_id).send(f"<:smashvoid:689537348689592354> Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
+        await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
         scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
                    f":arrow_forward: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
@@ -436,10 +444,10 @@ async def check_tournament_state():
 
         tournoi_annonce = (f"<@&{challenger_id}> *On arrête le freeplay !* Le tournoi est sur le point de commencer. Petit rappel :\n"
                            f"- Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
-                           f"- Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#689165233217994754>.\n"
+                           f"- Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{ruleset_channel_id}>.\n"
                            f"- Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
                            f"- Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
-                           f"- En cas de lag qui rend votre set injouable, n'hésitez pas à poster dans <#689562085616648305> où des TOs s'occuperont de vous.\n\n"
+                           f"- En cas de lag qui rend votre set injouable, n'hésitez pas à poster dans <#{resolution_channel_id}> où des TOs s'occuperont de vous.\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
         await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
@@ -461,7 +469,7 @@ async def check_tournament_state():
     ### Si le tournoi est terminé
     elif bracket['state'] in ["complete", "ended"]:
         guild = bot.get_guild(id=guild_id)
-        await bot.get_channel(annonce_channel_id).send(f"<:smashvoid:689537348689592354> Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
+        await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
         for inscrit in participants: await guild.get_member(inscrit).remove_roles(guild.get_role(challenger_id))
         scheduler.remove_job('check_tournament_state')
         with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
@@ -488,7 +496,7 @@ async def purge_channels():
 async def post_bracket(message):
     try:
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        await message.channel.send(f"<:smashvoid:689537348689592354> **{tournoi['name']}** : {tournoi['url']}")
+        await message.channel.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
     except:
         await message.channel.send(":warning: Il n'y a pas de tournoi prévu à l'heure actuelle.")
 
@@ -676,8 +684,8 @@ async def launch_matches(bracket, guild):
                 gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
 
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
-                                          f"- Les règles du set doivent suivre celles énoncées dans <#689165233217994754> (doit être lu au préalable).\n"
-                                          f"- En cas de lag qui rend la partie injouable, utilisez le channel <#689562085616648305>.\n"
+                                          f"- Les règles du set doivent suivre celles énoncées dans <#{ruleset_channel_id}> (doit être lu au préalable).\n"
+                                          f"- En cas de lag qui rend la partie injouable, utilisez le channel <#{resolution_channel_id}>.\n"
                                           f"- **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n\n")
 
