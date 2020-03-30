@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "3.12"
+version                             = "3.13"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -340,8 +340,10 @@ async def start_check_in():
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
+    challenger = guild.get_role(challenger_id)
+
     for inscrit in participants:
-        await guild.get_member(inscrit).add_roles(guild.get_role(challenger_id))
+        await guild.get_member(inscrit).add_roles(challenger)
 
     scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
 
@@ -428,6 +430,7 @@ async def check_tournament_state():
 
     ### Si le tournoi n'a pas encore commencé
     if (tournoi["statut"] == "pending") and (bracket['state'] != "pending"):
+
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
         scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
@@ -457,24 +460,32 @@ async def check_tournament_state():
 
     #### Si le tournoi est en cours
     elif bracket['state'] in ["in_progress", "underway"]:
+
         try:
             open_matches = challonge.matches.index(tournoi["id"], state="open")
             guild = bot.get_guild(id=guild_id)
 
             await launch_matches(open_matches, guild)
             await call_stream(open_matches, guild)
+
         except:
             pass
 
     ### Si le tournoi est terminé
     elif bracket['state'] in ["complete", "ended"]:
-        guild = bot.get_guild(id=guild_id)
-        await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
-        for inscrit in participants: await guild.get_member(inscrit).remove_roles(guild.get_role(challenger_id))
+
         scheduler.remove_job('check_tournament_state')
+
+        await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
+
+        guild = bot.get_guild(id=guild_id)
+        challenger = guild.get_role(challenger_id)
+        for inscrit in participants: await guild.get_member(inscrit).remove_roles(challenger)
+
         with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
         with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
         with open(stream_path, 'w') as f: json.dump([], f, indent=4)
+
         await bot.change_presence(activity=discord.Game(version))
 
 
@@ -606,7 +617,7 @@ async def score_match(message):
 
         if datetime.datetime.now() < tournoi["début_tournoi"]: return
 
-        winner = participants[message.author.id]["challonge"] # Le gagnat est celui qui poste !
+        winner = participants[message.author.id]["challonge"] # Le gagnant est celui qui poste
         match = challonge.matches.index(tournoi['id'], state="open", participant_id=winner)
 
         if match == []: return
@@ -614,7 +625,7 @@ async def score_match(message):
     except:
         await message.add_reaction("⚠️")
         return
-    
+
     try:
         score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
         if score[0] < score[2]: score = score[::-1] # S'assurer que le premier chiffre est celui du gagnant
@@ -741,11 +752,11 @@ async def add_stream(message):
     await message.add_reaction("✅")
 
 
-### Enlever un set de la stream quee
+### Enlever un set de la stream queue
 @bot.event
 async def remove_stream(message):
 
-    if message.content == "!rmstream queue": # Reset la streamqueue
+    if message.content == "!rmstream queue": # Reset la stream queue
         with open(stream_path, 'w') as f: json.dump([], f, indent=4)
         await message.add_reaction("✅")
 
@@ -805,19 +816,15 @@ async def list_stream(message):
 
             if match["suggested_play_order"] == order:
 
-                for joueur in participants:
-                    if participants[joueur]["challonge"] == match["player1_id"]:
-                        player1 = participants[joueur]['display_name']
-                        break
-                else:
-                    player1 = "(?)"
+                player1, player2 = "(?)", "(?)"
 
                 for joueur in participants:
+                    
+                    if participants[joueur]["challonge"] == match["player1_id"]:
+                        player1 = participants[joueur]['display_name']
+
                     if participants[joueur]["challonge"] == match["player2_id"]:
                         player2 = participants[joueur]['display_name']
-                        break
-                else:
-                    player2 = "(?)"
 
                 list_stream += f"**{match['suggested_play_order']}** : *{player1}* vs *{player2}*\n"
                 break
@@ -856,12 +863,12 @@ async def call_stream(bracket, guild):
             else:
                 await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
 
-            await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{player1.display_name}** vs **{player2.display_name}** !")
+            await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
             tournoi["on_stream"] = match["suggested_play_order"]
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-            stream.remove(match["suggested_play_order"])
+            while match["suggested_play_order"] in stream: stream.remove(match["suggested_play_order"])
             with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
 
             break
