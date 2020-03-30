@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "3.13"
+version                             = "3.14"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -54,7 +54,7 @@ challonge_api_key                   = config["challonge"]["api_key"]
 
 ### Texts
 welcome_text=f"""
-Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi. N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>. Enfin, amuse-toi bien.
+Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi. N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>. Enfin, amuse-toi bien.
 """
 
 help_text=f"""
