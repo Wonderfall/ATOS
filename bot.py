@@ -573,7 +573,7 @@ async def remove_inscrit(message):
             if datetime.datetime.now() > tournoi["début_check-in"]:
                 await member.remove_roles(message.guild.get_role(challenger_id))
 
-            if datetime.datetime.now() < tournoi["début_tournoi"]:
+            if tournoi["statut"] != "underway":
                 del participants[member.id]
                 with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
                 await update_annonce()
@@ -595,7 +595,7 @@ async def self_dq(message):
         if datetime.datetime.now() > tournoi["début_check-in"]:
             await message.author.remove_roles(message.guild.get_role(challenger_id))
 
-        if datetime.datetime.now() < tournoi["début_tournoi"]:
+        if tournoi["statut"] != "underway":
             del participants[message.author.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await update_annonce()
@@ -615,7 +615,7 @@ async def score_match(message):
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         with open(stream_path, 'r+') as f: stream = json.load(f)
 
-        if datetime.datetime.now() < tournoi["début_tournoi"]: return
+        if tournoi["statut"] != "underway": return
 
         winner = participants[message.author.id]["challonge"] # Le gagnant est celui qui poste
         match = challonge.matches.index(tournoi['id'], state="open", participant_id=winner)
