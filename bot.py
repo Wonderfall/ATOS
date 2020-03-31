@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "3.14"
+version                             = "3.15"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -768,6 +768,7 @@ async def remove_stream(message):
 
     else:
         try:
+            with open(stream_path, 'r+') as f: stream = json.load(f)
             for order in list(map(int, message.content.replace("!rmstream ", "").split())): stream.remove(order)
             with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
             await message.add_reaction("✅")
