@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "3.15"
+version                             = "3.16"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -565,7 +565,7 @@ async def remove_inscrit(message):
         if member.id in participants:
 
             try:
-                challonge.participants.destroy(tournoi["id"], participants[inscrit]['challonge'])
+                challonge.participants.destroy(tournoi["id"], participants[member.id]['challonge'])
             except:
                 await message.add_reaction("⚠️")
                 return
@@ -574,7 +574,7 @@ async def remove_inscrit(message):
                 await member.remove_roles(message.guild.get_role(challenger_id))
 
             if datetime.datetime.now() < tournoi["début_tournoi"]:
-                del participants[inscrit]
+                del participants[member.id]
                 with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
                 await update_annonce()
 
