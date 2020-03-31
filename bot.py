@@ -498,11 +498,17 @@ async def purge_channels():
     guild = bot.get_guild(id=guild_id)
 
     for category, channels in guild.by_category():
-        if (category != None) and (category.id == tournoi_cat_id):
-            for channel in channels:
-                async for message in channel.history():
-                    await message.delete()
-            break
+
+        if category != None:
+
+            if category.id == tournoi_cat_id:
+                for channel in channels:
+                    async for message in channel.history():
+                        await message.delete()
+
+            if category.id == arenes_cat_id:
+                for channel in channels:
+                    await channel.delete()
 
 
 ### Affiche le bracket en cours
