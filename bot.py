@@ -208,32 +208,34 @@ async def reload_tournament():
 
         print("Scheduled tasks for a tournament have been reloaded.")
 
-        annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+        if tournoi["statut"] == "pending":
 
-        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+            annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
 
-        # Avoir une liste des users ayant réagi
-        for reaction in annonce.reactions:
-            if str(reaction.emoji) == "✅":
-                reactors = await reaction.users().flatten()
-                break
+            with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
-        # Inscrire ceux qui ne sont pas dans les participants
-        id_list = []
+            # Avoir une liste des users ayant réagi
+            for reaction in annonce.reactions:
+                if str(reaction.emoji) == "✅":
+                    reactors = await reaction.users().flatten()
+                    break
 
-        for reactor in reactors:
-            if reactor.id != bot.user.id:
-                id_list.append(reactor.id)  # Récupérer une liste des IDs pour plus tard
+            # Inscrire ceux qui ne sont pas dans les participants
+            id_list = []
 
-                if reactor.id not in participants:
-                    await inscrire(reactor)
+            for reactor in reactors:
+                if reactor.id != bot.user.id:
+                    id_list.append(reactor.id)  # Récupérer une liste des IDs pour plus tard
 
-        # Désinscrire ceux qui ne sont plus dans la liste des users ayant réagi
-        for inscrit in participants:
-            if inscrit not in id_list:
-                await desinscrire(annonce.guild.get_member(inscrit))
+                    if reactor.id not in participants:
+                        await inscrire(reactor)
 
-        print("Missed inscriptions were also taken care of.")
+            # Désinscrire ceux qui ne sont plus dans la liste des users ayant réagi
+            for inscrit in participants:
+                if inscrit not in id_list:
+                    await desinscrire(annonce.guild.get_member(inscrit))
+
+            print("Missed inscriptions were also taken care of.")
 
     except:
         print("No scheduled tasks for any tournament had to be reloaded.")
@@ -389,6 +391,9 @@ async def end_check_in():
 
     with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
     await update_annonce()
+
+    annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+    await annonce.clear_reaction("✅")
 
     await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé.** Les personnes n'ayant pas check-in ont été retirées du bracket. Contactez les TOs s'il y a un quelconque problème, merci de votre compréhension.")
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs s'il y a un quelconque problème, merci de votre compréhension.")
@@ -571,7 +576,7 @@ async def remove_inscrit(message):
             if datetime.datetime.now() > tournoi["début_check-in"]:
                 await member.remove_roles(message.guild.get_role(challenger_id))
 
-            if tournoi["statut"] != "underway":
+            if tournoi["statut"] == "pending":
                 del participants[member.id]
                 with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
                 await update_annonce()
@@ -593,7 +598,7 @@ async def self_dq(message):
         if datetime.datetime.now() > tournoi["début_check-in"]:
             await message.author.remove_roles(message.guild.get_role(challenger_id))
 
-        if tournoi["statut"] != "underway":
+        if tournoi["statut"] == "pending":
             del participants[message.author.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await update_annonce()
