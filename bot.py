@@ -466,8 +466,6 @@ async def check_tournament_state():
             guild = bot.get_guild(id=guild_id)
 
             await launch_matches(open_matches, guild)
-            await call_stream(open_matches, guild)
-
         except:
             pass
 
@@ -641,6 +639,7 @@ async def score_match(message):
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
             tournoi["on_stream"] = None
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+            await call_stream()
 
         try:
             await discord.utils.get(message.guild.text_channels, name=str(match[0]["suggested_play_order"])).delete()
@@ -704,6 +703,8 @@ async def launch_matches(bracket, guild):
                     gaming_channel_annonce += f":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène."
 
                 await gaming_channel.send(gaming_channel_annonce)
+
+            if (match["suggested_play_order"] in stream) and (tournoi["on_stream"] == None): await call_stream()
 
             on_stream = "(prévu **on stream**) :tv:" if match["suggested_play_order"] in stream else ""
             sets += f":arrow_forward: À lancer : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt}\n\n"
@@ -840,7 +841,10 @@ async def list_stream(message):
 
 ### Appeler les joueurs on stream
 @bot.event
-async def call_stream(bracket, guild):
+async def call_stream():
+
+    bracket = challonge.matches.index(tournoi["id"], state="open")
+    guild = bot.get_guild(id=guild_id)
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
