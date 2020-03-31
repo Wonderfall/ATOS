@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "3.16"
+version                             = "3.17"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -643,7 +643,7 @@ async def score_match(message):
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
         try:
-            await discord.utils.get(message.guild.text_channels, name=str(match["suggested_play_order"])).delete()
+            await discord.utils.get(message.guild.text_channels, name=str(match[0]["suggested_play_order"])).delete()
         except:
             pass
 
