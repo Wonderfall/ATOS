@@ -670,7 +670,7 @@ async def score_match(message):
             reaction, user = await bot.wait_for('reaction_add', timeout=20.0, check=check)
 
         except asyncio.TimeoutError:
-            await message.channel.send(f"<@{message.author.id} Tu n'as pas confirmé à temps, merci de rentrer ton score à nouveau puis de confirmer.")
+            await message.channel.send(f"<@{message.author.id}> Tu n'as pas confirmé à temps, merci de rentrer ton score à nouveau puis de confirmer.")
             return
 
         else:
