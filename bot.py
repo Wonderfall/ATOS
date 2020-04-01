@@ -1022,9 +1022,9 @@ async def rappel_matches(bracket, guild):
                             await to_dq.send("Désolé, mais tu as été DQ du tournoi pour inactivité. Ceci est un message automatique, pour toute plainte merci de contacter les TOs.")
                         except:
                             pass
-                        else:
-                            challonge.participants.destroy(tournoi["id"], participants[to_dq.id]['challonge'])
-                            await to_dq.remove_roles(guild.get_role(challenger_id))
+                        
+                        challonge.participants.destroy(tournoi["id"], participants[to_dq.id]['challonge'])
+                        await to_dq.remove_roles(guild.get_role(challenger_id))
 
 
 ### Si administrateur
