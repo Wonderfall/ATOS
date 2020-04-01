@@ -663,11 +663,18 @@ async def score_match(message):
 
     except:
         await message.add_reaction("⚠️")
-        await message.channel.send(f"<@{message.author.id}> Tu n'as pas employé le bon format de score *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
+        await message.channel.send(f"<@{message.author.id}> **Ton score ne possède pas le bon format** *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
         return
 
     else:
         if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
+
+        aimed_score = 3 if is_top8(match[0]["round"]) else 2
+        
+        if score[0] < aimed_score:
+            await message.add_reaction("⚠️")
+            await message.channel.send(f"<@{message.author.id}> **Ton score est incorrect**. Rappel : BO3 jusqu'à top 8 qui a lieu en BO5.")
+            return
 
         for joueur in participants:
             if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
