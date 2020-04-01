@@ -159,6 +159,7 @@ async def get_tournament(url):
 
     tournoi = {
         "name": bracket["name"],
+        "game": bracket["game_name"],
         "url": url,
         "id": bracket["id"],
         "limite": bracket["signup_cap"],
@@ -264,7 +265,7 @@ async def annonce_inscription():
                f":arrow_forward: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')} \n"
                f":arrow_forward: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)* \n"
                f":arrow_forward: **Bracket** : {tournoi['url']} *(accessible en lecture)* \n"
-               f":arrow_forward: **Format** : singles *(Super Smash Bros. Ultimate)*\n"
+               f":arrow_forward: **Format** : singles *({tournoi['game']})*\n"
                "\n"
                "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment. \n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
@@ -783,7 +784,10 @@ async def launch_matches(bracket, guild):
 
                 await gaming_channel.send(gaming_channel_annonce)
 
-            if (match["suggested_play_order"] in stream) and (tournoi["on_stream"] == None): await call_stream()
+            try:
+                if (match["suggested_play_order"] == stream[0]) and (tournoi["on_stream"] == None): await call_stream()
+            except IndexError:
+                pass
 
             infos = "(prévu **on stream**) :tv:" if match["suggested_play_order"] in stream else ""
             if is_top8(match["round"]): on_stream += " :fire:"
@@ -991,10 +995,10 @@ async def rappel_matches(bracket, guild):
         if (match["underway_at"] != None) and (match["suggested_play_order"] not in stream) and (match["suggested_play_order"] != tournoi["on_stream"]):
 
             debut_set = dateutil.parser.parse(str(match["underway_at"])).replace(tzinfo=None)
-            seuil = 40 if is_top8(match["round"]) else 26 # Calculé selon (temps maximum d'un match * nombre maximum de matchs) + 10 minutes
+            seuil = 42 if is_top8(match["round"]) else 28 # Calculé selon (tps max match * nb max matchs) + 7 minutes
 
             if datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil):
-                
+
                 gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
 
                 if gaming_channel != None:
@@ -1009,7 +1013,7 @@ async def rappel_matches(bracket, guild):
                         alerte = (f":timer: **Je n'ai toujours pas reçu de score pour ce set !** <@{player1.id}> <@{player2.id}>\n"
                                   f"- Merci de le poster dans <#{scores_channel_id}> dès que possible.\n"
                                   f"- Au-delà d'un certain temps, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
-                                  f"- ... et la personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.")
+                                  f"- La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.")
 
                         await gaming_channel.send(alerte)
 
