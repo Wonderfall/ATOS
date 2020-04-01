@@ -416,6 +416,7 @@ async def check_in(message):
             challonge.participants.destroy(tournoi["id"], participants[message.author.id]['challonge'])
             await message.author.remove_roles(message.guild.get_role(challenger_id))
             del participants[message.author.id]
+            await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", message.author)
             await message.add_reaction("✅")
 
         else:
@@ -583,6 +584,9 @@ async def remove_inscrit(message):
             if datetime.datetime.now() > tournoi["début_check-in"]:
                 await member.remove_roles(message.guild.get_role(challenger_id))
 
+            if datetime.datetime.now() < tournoi["end_check-in"]:
+                await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", member)
+
             if tournoi["statut"] == "pending":
                 del participants[member.id]
                 with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
@@ -604,6 +608,9 @@ async def self_dq(message):
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
             await message.author.remove_roles(message.guild.get_role(challenger_id))
+
+        if datetime.datetime.now() < tournoi["end_check_in"]:
+            await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", message.author)
 
         if tournoi["statut"] == "pending":
             del participants[message.author.id]
