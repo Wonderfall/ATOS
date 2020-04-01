@@ -641,7 +641,8 @@ async def score_match(message):
         score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
 
     except:
-        await message.channel.send(f"⚠️ <@{message.author.id}> Tu n'as pas employé le bon format de score *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
+        await message.add_reaction("⚠️")
+        await message.channel.send(f"<@{message.author.id}> Tu n'as pas employé le bon format de score *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
         return
 
     else:
@@ -674,7 +675,9 @@ async def score_match(message):
             return
 
         else:
-            if str(reaction.emoji) == "❌": return
+            if str(reaction.emoji) == "❌":
+                await message.add_reaction("❌")
+                return
 
         challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
 
@@ -688,10 +691,11 @@ async def score_match(message):
         except:
             pass
 
-        await message.add_reaction("✅")
-
     except:
         await message.add_reaction("⚠️")
+
+    else:
+        await message.add_reaction("✅")
 
 
 ### Lancer matchs ouverts
