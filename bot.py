@@ -112,6 +112,14 @@ def int_keys(ordered_pairs):
         result[key] = value
     return result
 
+### Determine whether a match is top 8 or not
+def is_top8(match_round):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    if (match_round >= tournoi["round_winner_top8"]) or (match_round <= tournoi["round_looser_top8"]):
+        return True
+    else:
+        return False
 
 #### Notifier de l'initialisation
 @bot.event
@@ -465,6 +473,8 @@ async def check_tournament_state():
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
+        await calculate_top8()
+
     #### Si le tournoi est en cours
     elif bracket['state'] in ["in_progress", "underway"]:
 
@@ -754,14 +764,19 @@ async def launch_matches(bracket, guild):
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n\n")
 
                 if match["suggested_play_order"] in stream:
-                    gaming_channel_annonce += f":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène."
+                    gaming_channel_annonce += f":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène.\n"
+
+                if is_top8(match["round"]):
+                    gaming_channel_annonce += f":tv: Ceci est un match de **top 8** : vous devez le jouer en **BO5** *(best of five)*."
 
                 await gaming_channel.send(gaming_channel_annonce)
 
             if (match["suggested_play_order"] in stream) and (tournoi["on_stream"] == None): await call_stream()
 
-            on_stream = "(prévu **on stream**) :tv:" if match["suggested_play_order"] in stream else ""
-            sets += f":arrow_forward: À lancer : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt}\n\n"
+            infos = "(prévu **on stream**) :tv:" if match["suggested_play_order"] in stream else ""
+            if is_top8(match["round"]): on_stream += " :fire:"
+
+            sets += f":arrow_forward: À lancer : <@{player1.id}> vs <@{player2.id}> {infos}\n{gaming_channel_txt}\n\n"
 
     if sets != "": await bot.get_channel(queue_channel_id).send(sets)
 
@@ -931,6 +946,25 @@ async def call_stream():
             with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
 
             break
+
+
+@bot.event
+async def calculate_top8():
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
+
+    max_round_winner, max_round_looser = 1, -1
+
+    for match in bracket:
+        if match["round"] > max_round_winner: max_round_winner = match["round"]
+        if match["round"] < max_round_looser: max_round_looser = match["round"]
+
+    tournoi["round_winner_top8"] = max_round_winner - 2
+    tournoi["round_looser_top8"] = max_round_looser + 3
+
+    with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+
+    await bot.get_channel(tournoi_channel_id).send(f":fire: **Le top 8 commencera, d'après le bracket :**\n- En **winner round {max_round_winner - 2}** (semi-finales)\n- En **looser round {-(max_round_looser + 3)}**")
 
 
 ### Si administrateur
