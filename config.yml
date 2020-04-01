@@ -5,6 +5,7 @@ paths:
   tournoi: data/tournoi.json
   participants: data/participants.json
   stream: data/stream.json
+  stagelist: data/stagelist.yml
 
 discord:
   secret:

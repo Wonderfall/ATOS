@@ -12,6 +12,7 @@ version                             = "3.17"
 tournoi_path                        = config["paths"]["tournoi"]
 participants_path                   = config["paths"]["participants"]
 stream_path                         = config["paths"]["stream"]
+stagelist_path                      = config["paths"]["stagelist"]
 
 #### Discord IDs
 guild_id                            = config["discord"]["guild"]
@@ -52,6 +53,7 @@ challonge_user                      = config["challonge"]["user"]
 bot_secret                          = config["discord"]["secret"]
 challonge_api_key                   = config["challonge"]["api_key"]
 
+
 ### Texts
 welcome_text=f"""
 Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi. N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>. Enfin, amuse-toi bien.
@@ -66,6 +68,7 @@ help_text=f"""
 - `!dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
 - `!flip` : pile/face, fonctionne uniquement dans <#{flip_channel_id}>.
 - `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
+- `!stages` : obtenir la stagelist légale actuelle.
 
 :no_entry_sign: **Commandes administrateur :**
 - `!purge` : purifier les channels relatifs à un tournoi.
@@ -760,6 +763,7 @@ async def launch_matches(bracket, guild):
 
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
                                           f"- Les règles du set doivent suivre celles énoncées dans <#{ruleset_channel_id}> (doit être lu au préalable).\n"
+                                          f"- La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
                                           f"- En cas de lag qui rend la partie injouable, utilisez le channel <#{resolution_channel_id}>.\n"
                                           f"- **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n\n")
@@ -1026,6 +1030,16 @@ async def rappel_matches(bracket, guild):
                         challonge.participants.destroy(tournoi["id"], participants[to_dq.id]['challonge'])
                         await to_dq.remove_roles(guild.get_role(challenger_id))
 
+### Obtenir stagelist
+@bot.event
+async def get_stagelist(message):
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
+
+    msg = ":map: Voici la liste des stages légaux à l'heure actuelle :\n"
+    for stage in stagelist["liste"]: msg += f"- {stage}\n"
+
+    await message.channel.send(msg)
+
 
 ### Si administrateur
 @bot.event
@@ -1082,6 +1096,8 @@ async def on_message(message):
     elif message.content == '!dq': await self_dq(message)
 
     elif message.content == '!help': await message.channel.send(help_text)
+
+    elif message.content == '!stages': await get_stagelist(message)
 
     elif ((message.content in ["!purge", "!stream"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
         if message.content == '!purge': await purge_channels()
