@@ -32,7 +32,6 @@ tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
 ruleset_channel_id                  = config["discord"]["channels"]["ruleset"]
 deroulement_channel_id              = config["discord"]["channels"]["deroulement"]
 faq_channel_id                      = config["discord"]["channels"]["faq"]
-resolution_channel_id               = config["discord"]["channels"]["resolution"]
 
 ### Server categories
 tournoi_cat_id                      = config["discord"]["categories"]["tournoi"]
@@ -69,6 +68,7 @@ help_text=f"""
 - `!flip` : pile/face, fonctionne uniquement dans <#{flip_channel_id}>.
 - `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
 - `!stages` : obtenir la stagelist légale actuelle.
+- `!lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
 
 :no_entry_sign: **Commandes administrateur :**
 - `!purge` : purifier les channels relatifs à un tournoi.
@@ -83,6 +83,21 @@ help_text=f"""
 - `!rmstream` : retirer un set de la stream queue *(paramètre : n° | queue | now)*.
 
 *Version {version}, made by Wonderfall with :heart:*
+"""
+
+lag_text=f"""
+:satellite: **Un lag a été constaté**, les <@&{to_id}> sont contactés.
+
+**1)** En attendant, chaque joueur peut :
+- Vérifier qu'aucune autre connexion locale ne pompe la connexion.
+- S'assurer que la connexion au réseau est, si possible, câblée.
+- S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).
+
+**2)** Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit :
+- Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.
+- Décrire sa méthode de connexion actuelle *(Wi-Fi, Ethernet direct, CPL -> ADSL, FFTH, 4G...)*.
+
+**3)** Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).
 """
 
 ### Init things
@@ -470,7 +485,7 @@ async def check_tournament_state():
                            f"- Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{ruleset_channel_id}>.\n"
                            f"- Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
                            f"- Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
-                           f"- En cas de lag qui rend votre set injouable, n'hésitez pas à poster dans <#{resolution_channel_id}> où des TOs s'occuperont de vous.\n\n"
+                           f"- En cas de lag qui rend votre set injouable, utilsiez la commande `!lag` pour résoudre la situation.\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
         await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
@@ -772,7 +787,7 @@ async def launch_matches(bracket, guild):
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
                                           f"- Les règles du set doivent suivre celles énoncées dans <#{ruleset_channel_id}> (doit être lu au préalable).\n"
                                           f"- La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
-                                          f"- En cas de lag qui rend la partie injouable, utilisez le channel <#{resolution_channel_id}>.\n"
+                                          f"- En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
                                           f"- **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n\n")
 
@@ -1107,6 +1122,8 @@ async def on_message(message):
     elif message.content == '!dq': await self_dq(message)
 
     elif message.content == '!help': await message.channel.send(help_text)
+
+    elif message.content == '!lag': await message.channel.send(lag_text)
 
     elif message.content == '!stages': await get_stagelist(message)
 
