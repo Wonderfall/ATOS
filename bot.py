@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "3.17"
+version                             = "4.0"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -379,7 +379,7 @@ async def rappel_check_in():
             rappel_msg += f"- <@{inscrit}>\n"
 
     if rappel_msg != "":
-        await bot.get_channel(check_in_channel_id).send(f":clock1: **Rappel de check-in !**\n{rappel_msg}\n\n*Vous avez jusqu'à {tournoi['fin_check-in'].strftime('%Hh%M')}, sinon vous serez désinscrit(s) automatiquement.*")
+        await bot.get_channel(check_in_channel_id).send(f":clock1: **Rappel de check-in !**\n{rappel_msg}\n*Vous avez jusqu'à {tournoi['fin_check-in'].strftime('%Hh%M')}, sinon vous serez désinscrit(s) automatiquement.*")
 
 
 ### Fin du check-in
