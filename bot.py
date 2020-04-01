@@ -441,6 +441,7 @@ async def check_tournament_state():
         scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
                    f":arrow_forward: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
                    f":arrow_forward: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
+                   f":arrow_forward: **Une vérification sera demandée**, vous devrez alors ajouter une réaction (:white_check_mark: / :x:).\n"
                    f":arrow_forward: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
                    f":arrow_forward: En cas de mauvais score : contactez un TO pour une correction manuelle.")
 
@@ -635,16 +636,46 @@ async def score_match(message):
         await message.add_reaction("⚠️")
         return
 
+
     try:
         score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
-        if score[0] < score[2]: score = score[::-1] # S'assurer que le premier chiffre est celui du gagnant
-        if winner == match[0]["player2_id"]: score = score[::-1] # Inverser les chiffres pour que player1 soit le premier
 
     except:
         await message.channel.send(f"⚠️ <@{message.author.id}> Tu n'as pas employé le bon format de score *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
         return
 
+    else:
+        if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
+
+        for joueur in participants:
+            if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
+            if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+
+        if winner == participants[player2]["challonge"]:
+            score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
+            looser = player1
+        else:
+            looser = player2
+
+
     try:
+        confirmation = message.channel.send(f"<@{message.author.id}> Confirmes-tu que tu as gagné **{score}** contre **{participants[looser]['display_name']}** ?")
+        confirmation.add_reaction("✅")
+        confirmation.add_reaction("❌")
+
+        def check(reaction, user):
+            return (user == message.author) and (str(reaction.emoji) in ["✅", "❌"]) and (reaction.message.id == confirmation.id)
+
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=20.0, check=check)
+
+        except asyncio.TimeoutError:
+            await message.channel.send(f"<@{message.author.id} Tu n'as pas confirmé à temps, merci de rentrer ton score à nouveau puis de confirmer.")
+            return
+
+        else:
+            if str(reaction.emoji) == "❌": return
+
         challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
