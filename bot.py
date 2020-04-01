@@ -767,7 +767,7 @@ async def launch_matches(bracket, guild):
                     gaming_channel_annonce += f":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène.\n"
 
                 if is_top8(match["round"]):
-                    gaming_channel_annonce += f":tv: Ceci est un match de **top 8** : vous devez le jouer en **BO5** *(best of five)*."
+                    gaming_channel_annonce += f":fire: Ceci est un match de **top 8** : vous devez le jouer en **BO5** *(best of five)*."
 
                 await gaming_channel.send(gaming_channel_annonce)
 
