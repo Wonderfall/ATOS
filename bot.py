@@ -239,8 +239,12 @@ async def reload_tournament():
             scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
             scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
 
+            if tournoi["début_check-in"] < datetime.datetime.now() < tournoi["fin_check-in"]:
+                scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
+
         print("Scheduled tasks for a tournament have been reloaded.")
 
+        # Prendre les inscriptions manquées
         if datetime.datetime.now() < tournoi["fin_check-in"]:
 
             annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
