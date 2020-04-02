@@ -1021,7 +1021,7 @@ async def rappel_matches(bracket, guild):
 
                         alerte = (f":timer: **Je n'ai toujours pas reçu de score pour ce set !** <@{player1.id}> <@{player2.id}>\n"
                                   f"- Merci de le poster dans <#{scores_channel_id}> dès que possible.\n"
-                                  f"- Au-delà d'un certain temps, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
+                                  f"- Dans 10 minutes, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
                                   f"- La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.")
 
                         await gaming_channel.send(alerte)
@@ -1039,7 +1039,7 @@ async def rappel_matches(bracket, guild):
 
                         to_dq = player2 if winner.id == player1.id else player1
 
-                        await bot.get_channel(tournoi_channel_id).send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner}> passe au round suivant.\n-<@{to_dq}> est DQ du tournoi.")
+                        await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner}> passe au round suivant.\n-<@{to_dq}> est DQ du tournoi.")
 
                         try:
                             await to_dq.send("Désolé, mais tu as été DQ du tournoi pour inactivité. Ceci est un message automatique, pour toute plainte merci de contacter les TOs.")
