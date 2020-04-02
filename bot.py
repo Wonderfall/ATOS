@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.1"
+version                             = "4.2"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -212,7 +212,7 @@ async def setup_tournament(message):
 
     scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
     scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
-    scheduler.add_job(check_tournament_state, 'interval', id='check_tournament_state', minutes=1, replace_existing=True)
+    scheduler.add_job(check_tournament_state, 'interval', id='check_tournament_state', minutes=2, replace_existing=True)
 
     await message.add_reaction("✅")
     await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
@@ -229,13 +229,19 @@ async def reload_tournament():
         await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
 
         # Relancer les tâches automatiques
-        scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
-        scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
-        scheduler.add_job(check_tournament_state, 'interval', id='check_tournament_state', minutes=1, replace_existing=True)
+        scheduler.add_job(check_tournament_state, 'interval', id='check_tournament_state', minutes=2, replace_existing=True)
+
+        if tournoi["statut"] == "underway":
+            scheduler.add_job(launch_matches, 'interval', id='launch_matches', minutes=1, replace_existing=True)
+            scheduler.add_job(rappel_matches, 'interval', id='rappel_matches', minutes=1, replace_existing=True)
+
+        elif tournoi["statut"] == "pending":
+            scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
+            scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
 
         print("Scheduled tasks for a tournament have been reloaded.")
 
-        if tournoi["statut"] == "pending":
+        if datetime.datetime.now() < tournoi["fin_check-in"]:
 
             annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
 
@@ -461,7 +467,7 @@ async def check_tournament_state():
     bracket = challonge.tournaments.show(tournoi["id"])
 
     ### Dès que le tournoi commence
-    if (tournoi["statut"] == "pending") and (bracket['state'] != "pending"):
+    if (tournoi["statut"] == "pending") and (bracket['state'] == "underway"):
 
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
@@ -486,26 +492,20 @@ async def check_tournament_state():
                            f"- En cas de lag qui rend votre set injouable, utilsiez la commande `!lag` pour résoudre la situation.\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
-        await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
-
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
         await calculate_top8()
 
-    #### Si le tournoi est en cours
-    elif bracket['state'] in ["in_progress", "underway"]:
+        scheduler.add_job(launch_matches, 'interval', id='launch_matches', minutes=1, replace_existing=True)
+        scheduler.add_job(rappel_matches, 'interval', id='rappel_matches', minutes=1, replace_existing=True)
 
-        try:
-            open_matches = challonge.matches.index(tournoi["id"], state="open")
-            guild = bot.get_guild(id=guild_id)
-            await launch_matches(open_matches, guild)
-            await rappel_matches(open_matches, guild)
-        except:
-            pass
 
     ### Dès que le tournoi est terminé
     elif bracket['state'] in ["complete", "ended"]:
+
+        scheduler.remove_job('launch_matches')
+        scheduler.remove_job('rappel_matches')
 
         scheduler.remove_job('check_tournament_state')
 
@@ -738,7 +738,10 @@ async def score_match(message):
 
 ### Lancer matchs ouverts
 @bot.event
-async def launch_matches(bracket, guild):
+async def launch_matches():
+
+    bracket = challonge.matches.index(tournoi["id"], state="open")
+    guild = bot.get_guild(id=guild_id)
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -994,7 +997,11 @@ async def calculate_top8():
 
 ### Appeler les joueurs on stream
 @bot.event
-async def rappel_matches(bracket, guild):
+async def rappel_matches():
+
+    bracket = challonge.matches.index(tournoi["id"], state="open")
+    guild = bot.get_guild(id=guild_id)
+
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
