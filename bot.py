@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.0"
+version                             = "4.1"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -275,14 +275,13 @@ async def reload_tournament():
 async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    annonce = (f"{server_logo} **{tournoi['name']}** \n"
-               f":arrow_forward: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')} \n"
-               f":arrow_forward: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')} \n"
-               f":arrow_forward: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)* \n"
-               f":arrow_forward: **Bracket** : {tournoi['url']} *(accessible en lecture)* \n"
-               f":arrow_forward: **Format** : singles *({tournoi['game']})*\n"
-               "\n"
-               "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment. \n"
+    annonce = (f"{server_logo} **{tournoi['name']}** - {tournoi['game']}\n"
+               f":arrow_forward: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
+               f":arrow_forward: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
+               f":arrow_forward: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
+               f":arrow_forward: **Bracket** : {tournoi['url']}\n"
+               f":arrow_forward: **Format** : singles, double élimination\n\n"
+               "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
 
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
@@ -462,7 +461,7 @@ async def check_tournament_state():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     bracket = challonge.tournaments.show(tournoi["id"])
 
-    ### Si le tournoi n'a pas encore commencé
+    ### Dès que le tournoi commence
     if (tournoi["statut"] == "pending") and (bracket['state'] != "pending"):
 
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
@@ -506,7 +505,7 @@ async def check_tournament_state():
         except:
             pass
 
-    ### Si le tournoi est terminé
+    ### Dès que le tournoi est terminé
     elif bracket['state'] in ["complete", "ended"]:
 
         scheduler.remove_job('check_tournament_state')
@@ -789,13 +788,13 @@ async def launch_matches(bracket, guild):
                                           f"- La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
                                           f"- En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
                                           f"- **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
-                                          f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n\n")
-
-                if match["suggested_play_order"] in stream:
-                    gaming_channel_annonce += f":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène.\n"
+                                          f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
 
                 if is_top8(match["round"]):
-                    gaming_channel_annonce += f":fire: Ceci est un match de **top 8** : vous devez le jouer en **BO5** *(best of five)*."
+                    gaming_channel_annonce += ":fire: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
+
+                if match["suggested_play_order"] in stream:
+                    gaming_channel_annonce += ":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène."
 
                 await gaming_channel.send(gaming_channel_annonce)
 
@@ -804,10 +803,10 @@ async def launch_matches(bracket, guild):
             except IndexError:
                 pass
 
-            infos = "(prévu **on stream**) :tv:" if match["suggested_play_order"] in stream else ""
-            if is_top8(match["round"]): on_stream += " :fire:"
+            on_stream = "(**on stream**) :tv:" if match["suggested_play_order"] in stream else ""
+            top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
 
-            sets += f":arrow_forward: À lancer : <@{player1.id}> vs <@{player2.id}> {infos}\n{gaming_channel_txt}\n\n"
+            sets += f":arrow_forward: À lancer : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
 
     if sets != "": await bot.get_channel(queue_channel_id).send(sets)
 
@@ -966,7 +965,7 @@ async def call_stream():
                 await player1.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
                 await player2.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
             else:
-                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
+                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.**\n\nVoici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
 
             await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
@@ -979,6 +978,7 @@ async def call_stream():
             break
 
 
+### Calculer les rounds à partir desquels un set est top 8 (bracket D.E.)
 @bot.event
 async def calculate_top8():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -995,7 +995,7 @@ async def calculate_top8():
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-    await bot.get_channel(tournoi_channel_id).send(f":fire: **Le top 8 commencera, d'après le bracket :**\n- En **winner round {max_round_winner - 2}** (semi-finales)\n- En **looser round {-(max_round_looser + 3)}**")
+    await bot.get_channel(tournoi_channel_id).send(f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**")
 
 
 ### Appeler les joueurs on stream
@@ -1035,7 +1035,7 @@ async def rappel_matches(bracket, guild):
                         tournoi["warned"].append(match["suggested_play_order"])
                         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-                    # DQ pour inactivité (exceptionnel...)
+                    # DQ pour inactivité (exceptionnel...) -> fixé à 10 minutes après l'avertissement
                     elif (match["suggested_play_order"] in tournoi["warned"]) and (datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10)):
 
                         async for message in gaming_channel.history(): # Rechercher qui est la dernière personne activve du channel
@@ -1061,7 +1061,7 @@ async def rappel_matches(bracket, guild):
 async def get_stagelist(message):
     with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
 
-    msg = ":map: Voici la liste des stages légaux à l'heure actuelle :\n"
+    msg = ":map: **Voici la liste des stages légaux à l'heure actuelle :**\n"
     for stage in stagelist["liste"]: msg += f"- {stage}\n"
 
     await message.channel.send(msg)
