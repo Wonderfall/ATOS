@@ -1045,8 +1045,8 @@ async def rappel_matches():
                     # DQ pour inactivité (exceptionnel...) -> fixé à 10 minutes après l'avertissement
                     elif (match["suggested_play_order"] in tournoi["warned"]) and (datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10)):
 
-                        async for message in gaming_channel.history(): # Rechercher qui est la dernière personne activve du channel
-                            if message.author != bot.user:
+                        async for message in gaming_channel.history(): # Rechercher qui est la dernière personne active du channel
+                            if (message.author != bot.user) and (to_id not in [y.id for y in message.author.roles]):
                                 winner = message.author
                                 break
 
@@ -1060,7 +1060,6 @@ async def rappel_matches():
                             pass
                         
                         challonge.participants.destroy(tournoi["id"], participants[to_dq.id]['challonge'])
-                        await to_dq.remove_roles(guild.get_role(challenger_id))
 
 ### Obtenir stagelist
 @bot.event
