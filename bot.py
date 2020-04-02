@@ -25,7 +25,6 @@ inscriptions_channel_id             = config["discord"]["channels"]["inscription
 scores_channel_id                   = config["discord"]["channels"]["scores"]
 stream_channel_id                   = config["discord"]["channels"]["stream"]
 queue_channel_id                    = config["discord"]["channels"]["queue"]
-flip_channel_id                     = config["discord"]["channels"]["flip"]
 tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
 
 ### Info, non-interactive channels
@@ -65,7 +64,7 @@ help_text=f"""
 
 :video_game: **Commandes joueur :**
 - `!dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
-- `!flip` : pile/face, fonctionne uniquement dans <#{flip_channel_id}>.
+- `!flip` : pile/face simple, fonctionne dans tous les channels.
 - `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
 - `!stages` : obtenir la stagelist légale actuelle.
 - `!lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
@@ -1113,7 +1112,7 @@ async def on_message(message):
 
     elif message.channel.id == check_in_channel_id: await check_in(message)
 
-    elif message.channel.id == flip_channel_id: await flipcoin(message)
+    elif message.content == '!flip': await flipcoin(message)
 
     elif (message.channel.id == scores_channel_id) and (message.content.startswith("!win ")): await score_match(message)
 
