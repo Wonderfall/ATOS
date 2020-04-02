@@ -729,11 +729,6 @@ async def score_match(message):
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
             await call_stream()
 
-        try:
-            await discord.utils.get(message.guild.text_channels, name=str(match[0]["suggested_play_order"])).delete()
-        except:
-            pass
-
     except:
         await message.add_reaction("⚠️")
 
@@ -1045,7 +1040,6 @@ async def rappel_matches(bracket, guild):
                         to_dq = player2 if winner.id == player1.id else player1
 
                         await bot.get_channel(tournoi_channel_id).send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner}> passe au round suivant.\n-<@{to_dq}> est DQ du tournoi.")
-                        await gaming_channel.delete()
 
                         try:
                             await to_dq.send("Désolé, mais tu as été DQ du tournoi pour inactivité. Ceci est un message automatique, pour toute plainte merci de contacter les TOs.")
