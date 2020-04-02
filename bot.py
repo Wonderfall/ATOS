@@ -492,6 +492,8 @@ async def check_tournament_state():
                            f"- En cas de lag qui rend votre set injouable, utilsiez la commande `!lag` pour résoudre la situation.\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
+        await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
+
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
