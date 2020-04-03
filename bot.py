@@ -55,7 +55,11 @@ challonge_api_key                   = config["challonge"]["api_key"]
 
 ### Texts
 welcome_text=f"""
-Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi. N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>. Enfin, amuse-toi bien.
+Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi.
+
+N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>.
+
+Enfin, amuse-toi bien !
 """
 
 help_text=f"""
@@ -185,7 +189,20 @@ async def on_ready():
 ### A chaque arrivée de membre
 @bot.event
 async def on_member_join(member):
-    await bot.get_channel(blabla_channel_id).send(f"{server_logo} Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>. {welcome_text}")
+
+    message = random.choice([
+        f"<@{member.id}> joins the battle!",
+        f"Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>.",
+        f"Un <@{member.id}> sauvage apparaît !",
+        f"Le serveur {member.guild.name} accueille un nouveau membre :  <@{member.id}> !"
+    ])
+
+    try:
+        await member.send(f"Bienvenue sur le serveur **{member.guild.name}** ! {welcome_text}")
+    except:
+        await bot.get_channel(blabla_channel_id).send(f"{message} {welcome_text}")
+    else:
+        await bot.get_channel(blabla_channel_id).send(message) # Avoid sending welcome_text to the channel if possible
 
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
@@ -964,7 +981,7 @@ async def call_stream():
                 await player1.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
                 await player2.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
             else:
-                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.**\n\nVoici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
+                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** <@{player1.id}> <@{player2.id}>\n\nVoici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
 
             await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
