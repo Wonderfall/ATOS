@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.6"
+version                             = "4.7"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -104,6 +104,7 @@ lag_text=f"""
 **3)** Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).
 """
 
+
 ### Init things
 bot = discord.Client()
 challonge.set_credentials(challonge_user, challonge_api_key)
@@ -170,6 +171,7 @@ def nom_round(match_round):
             return "LQ"
         else:
             return f"LR{-match_round}"
+
 
 #### Notifier de l'initialisation
 @bot.event
@@ -627,7 +629,7 @@ async def flipcoin(message):
         await message.channel.send(f"<@{message.author.id}> {random.choice(['Tu commences à faire les bans.', 'Ton adversaire commence à faire les bans.'])}")
 
 
-### Ajout mannuel
+### Ajout manuel
 @bot.event
 async def add_inscrit(message):
 
