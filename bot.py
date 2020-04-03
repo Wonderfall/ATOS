@@ -707,8 +707,6 @@ async def score_match(message):
             await message.channel.send(f"<@{message.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
             return
 
-        elif (match[0]["underway_at"] == None)
-
         for joueur in participants:
             if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
             if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
