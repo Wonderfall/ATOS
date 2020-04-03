@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.7"
+version                             = "4.8"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -64,27 +64,27 @@ Enfin, amuse-toi bien !
 
 help_text=f"""
 :cd: **Commandes user :**
-- `!help` : c'est la commande que tu viens de rentrer.
-- `!bracket` : obtenir le lien du bracket en cours.
+:white_small_square: `!help` : c'est la commande que tu viens de rentrer.
+:white_small_square: `!bracket` : obtenir le lien du bracket en cours.
 
 :video_game: **Commandes joueur :**
-- `!dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
-- `!flip` : pile/face simple, fonctionne dans tous les channels.
-- `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
-- `!stages` : obtenir la stagelist légale actuelle.
-- `!lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
+:white_small_square: `!dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
+:white_small_square: `!flip` : pile/face simple, fonctionne dans tous les channels.
+:white_small_square: `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
+:white_small_square: `!stages` : obtenir la stagelist légale actuelle.
+:white_small_square: `!lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
 
 :no_entry_sign: **Commandes administrateur :**
-- `!purge` : purifier les channels relatifs à un tournoi.
-- `!setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.
-- `!rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
-- `!add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
+:white_small_square: `!purge` : purifier les channels relatifs à un tournoi.
+:white_small_square: `!setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.
+:white_small_square: `!rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
+:white_small_square: `!add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
 
 :tv: **Commandes stream :**
-- `!stream` : obtenir toutes les informations relatives au stream (IDs, on stream, queue).
-- `!setstream` : mettre en place l'arène de stream *(2 paramètres : ID MDP)*.
-- `!addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
-- `!rmstream` : retirer un set de la stream queue *(paramètre : n° | queue | now)*.
+:white_small_square: `!stream` : obtenir toutes les informations relatives au stream (IDs, on stream, queue).
+:white_small_square: `!setstream` : mettre en place l'arène de stream *(2 paramètres : ID MDP)*.
+:white_small_square: `!addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
+:white_small_square: `!rmstream` : retirer un set de la stream queue *(paramètre : n° | queue | now)*.
 
 *Version {version}, made by Wonderfall with :heart:*
 """
@@ -92,16 +92,16 @@ help_text=f"""
 lag_text=f"""
 :satellite: **Un lag a été constaté**, les <@&{to_id}> sont contactés.
 
-**1)** En attendant, chaque joueur peut :
-- Vérifier qu'aucune autre connexion locale ne pompe la connexion.
-- S'assurer que la connexion au réseau est, si possible, câblée.
-- S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).
+:one: En attendant, chaque joueur peut :
+:white_small_square: Vérifier qu'aucune autre connexion locale ne pompe la connexion.
+:white_small_square: S'assurer que la connexion au réseau est, si possible, câblée.
+:white_small_square: S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).
 
-**2)** Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit :
-- Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.
-- Décrire sa méthode de connexion actuelle *(Wi-Fi, Ethernet direct, CPL -> ADSL, FFTH, 4G...)*.
+:two: Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit :
+:white_small_square: Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.
+:white_small_square: Décrire sa méthode de connexion actuelle *(Wi-Fi, Ethernet direct, CPL -> ADSL, FFTH, 4G...)*.
 
-**3)** Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).
+:three: Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).
 """
 
 
@@ -333,11 +333,11 @@ async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     annonce = (f"{server_logo} **{tournoi['name']}** - {tournoi['game']}\n"
-               f":arrow_forward: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
-               f":arrow_forward: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
-               f":arrow_forward: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-               f":arrow_forward: **Bracket** : {tournoi['url']}\n"
-               f":arrow_forward: **Format** : singles, double élimination\n\n"
+               f":white_small_square: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
+               f":white_small_square: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
+               f":white_small_square: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
+               f":white_small_square: **Bracket** : {tournoi['url']}\n"
+               f":white_small_square: **Format** : singles, double élimination\n\n"
                "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
 
@@ -535,11 +535,11 @@ async def check_tournament_state():
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
         scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
-                   f":arrow_forward: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
-                   f":arrow_forward: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
-                   f":arrow_forward: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
-                   f":arrow_forward: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
-                   f":arrow_forward: En cas de mauvais score : contactez un TO pour une correction manuelle.")
+                   f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
+                   f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
+                   f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
+                   f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
+                   f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.")
 
         await bot.get_channel(scores_channel_id).send(scorann)
 
@@ -548,11 +548,11 @@ async def check_tournament_state():
         await bot.get_channel(queue_channel_id).send(queue_annonce)
 
         tournoi_annonce = (f"<@&{challenger_id}> *On arrête le freeplay !* Le tournoi est sur le point de commencer. Petit rappel :\n"
-                           f"- Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
-                           f"- Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{ruleset_channel_id}>.\n"
-                           f"- Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
-                           f"- Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
-                           f"- En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
+                           f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
+                           f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{ruleset_channel_id}>.\n"
+                           f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
+                           f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
+                           f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
                            f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
@@ -801,10 +801,10 @@ async def launch_matches():
                 gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
 
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
-                                          f"- Les règles du set doivent suivre celles énoncées dans <#{ruleset_channel_id}> (doit être lu au préalable).\n"
-                                          f"- La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
-                                          f"- En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
-                                          f"- **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
+                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{ruleset_channel_id}> (doit être lu au préalable).\n"
+                                          f":white_small_square: La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
+                                          f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
+                                          f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
 
                 if is_top8(match["round"]):
@@ -906,7 +906,7 @@ async def list_stream(message):
         await message.add_reaction("⚠️")
         return
 
-    msg = f":information_source: Arène de stream :\n- **ID** : `{tournoi['stream'][0]}`\n- **MDP** : `{tournoi['stream'][1]}`\n"
+    msg = f":information_source: Arène de stream :\n:white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`\n"
 
     if tournoi["on_stream"] != None:
 
@@ -944,7 +944,7 @@ async def list_stream(message):
                     if participants[joueur]["challonge"] == match["player2_id"]:
                         player2 = participants[joueur]['display_name']
 
-                list_stream += f"**{match['suggested_play_order']}** : *{player1}* vs *{player2}*\n"
+                list_stream += f":white_small_square: **{match['suggested_play_order']}** : *{player1}* vs *{player2}*\n"
                 break
 
     if list_stream != "":
@@ -983,7 +983,7 @@ async def call_stream():
                 await player1.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
                 await player2.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
             else:
-                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** <@{player1.id}> <@{player2.id}>\n\nVoici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
+                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** <@{player1.id}> <@{player2.id}>\n\nVoici les codes d'accès de l'arène :\n:white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`")
 
             await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
@@ -1047,9 +1047,9 @@ async def rappel_matches():
                     if match["suggested_play_order"] not in tournoi["warned"]:
 
                         alerte = (f":timer: **Je n'ai toujours pas reçu de score pour ce set !** <@{player1.id}> <@{player2.id}>\n"
-                                  f"- Merci de le poster dans <#{scores_channel_id}> dès que possible.\n"
-                                  f"- Dans 10 minutes, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
-                                  f"- La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.")
+                                  f":white_small_square: Merci de le poster dans <#{scores_channel_id}> dès que possible.\n"
+                                  f":white_small_square: Dans 10 minutes, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
+                                  f":white_small_square: La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.")
 
                         await gaming_channel.send(alerte)
 
