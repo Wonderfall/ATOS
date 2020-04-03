@@ -26,6 +26,7 @@ scores_channel_id                   = config["discord"]["channels"]["scores"]
 stream_channel_id                   = config["discord"]["channels"]["stream"]
 queue_channel_id                    = config["discord"]["channels"]["queue"]
 tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
+resultats_channel_id                = config["discord"]["channels"]["resultats"]
 
 ### Info, non-interactive channels
 ruleset_channel_id                  = config["discord"]["channels"]["ruleset"]
@@ -553,6 +554,8 @@ async def check_tournament_state():
 
         scheduler.remove_job('check_tournament_state')
 
+        await annonce_resultats()
+
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
 
         guild = bot.get_guild(id=guild_id)
@@ -1074,6 +1077,37 @@ async def author_is_admin(message):
     else:
         await message.add_reaction("🚫")
         return False
+
+
+### Annoncer les résultats
+@bot.event
+async def annonce_resultats():
+
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    participants, resultats = challonge.participants.index(tournoi["id"]), []
+
+    if len(participants) < 8:
+        await bot.get_channel(resultats_channel_id).send(f"{server_logo} Résultats du **{tournoi['name']}** : {tournoi['url']}")
+        return
+
+    for joueur in participants:
+        resultats.append((joueur['final_rank'], joueur['display_name']))
+
+    resultats.sort()
+    fifth = [y for x, y in resultats if x == 5]
+    seventh = [y for x, y in resultats if x == 7]
+    
+    classement = (f"{server_logo} Résultats du **{tournoi['name']}** :\n\n"
+                  f":trophy: **{resultats[0][1]}**\n"
+                  f":second_place: {resultats[1][1]}\n"
+                  f":third_place: {resultats[2][1]}\n\n"
+                  f"4e : {resultats[3][1]}\n"
+                  f"5e : {fifth[0]} / {fifth[1]}\n"
+                  f"7e : {seventh[0]} / {seventh[1]}\n\n"
+                  f":arrow_forward: **Bracket :** {tournoi['url']}\n"
+                  "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...")
+    
+    await bot.get_channel(resultats_channel_id).send(classement)
 
 
 ### À chaque ajout de réaction
