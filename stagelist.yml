@@ -1,3 +1,9 @@
-liste:
-  - foo
-  - bar
+Game 1:
+  starters:
+    - foo
+
+Game 2:
+  starters:
+    - foo
+  counterpicks:
+    - bar

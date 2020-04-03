@@ -1078,12 +1078,21 @@ async def rappel_matches():
 ### Obtenir stagelist
 @bot.event
 async def get_stagelist(message):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
 
-    msg = ":map: **Voici la liste des stages légaux à l'heure actuelle :**\n"
-    for stage in stagelist["liste"]: msg += f"- {stage}\n"
+    try:
+        msg = f":map: **Stages légaux pour {tournoi['game']} :**\n:white_small_square: __Starters__ :\n"
+        for stage in stagelist[tournoi['game']]['starters']: msg += f"- {stage}\n"
 
-    await message.channel.send(msg)
+        if 'counterpicks' in stagelist[tournoi['game']]:
+            msg += ":white_small_square: __Counterpicks__ :\n"
+            for stage in stagelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
+
+        await message.channel.send(msg)
+
+    except:
+        await message.channel.send(":warning: Aucun tournoi n'est en cours, je ne peux pas fournir de stagelist pour un jeu inconnu.")
 
 
 ### Si administrateur
