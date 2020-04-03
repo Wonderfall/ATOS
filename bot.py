@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.8"
+version                             = "4.10"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -29,7 +29,6 @@ tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
 resultats_channel_id                = config["discord"]["channels"]["resultats"]
 
 ### Info, non-interactive channels
-ruleset_channel_id                  = config["discord"]["channels"]["ruleset"]
 deroulement_channel_id              = config["discord"]["channels"]["deroulement"]
 faq_channel_id                      = config["discord"]["channels"]["faq"]
 
@@ -55,7 +54,7 @@ challonge_api_key                   = config["challonge"]["api_key"]
 
 ### Texts
 welcome_text=f"""
-Je t'invite à consulter le channel <#{deroulement_channel_id}> et <#{ruleset_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi.
+Je t'invite à consulter le channel <#{deroulement_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi.
 
 N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>.
 
@@ -73,6 +72,7 @@ help_text=f"""
 :white_small_square: `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
 :white_small_square: `!stages` : obtenir la stagelist légale actuelle.
 :white_small_square: `!lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
+:white_small_square: `!desync` : obtenir une notice d'aide en cas de desync sur Project+ - Dolphin Netplay.
 
 :no_entry_sign: **Commandes administrateur :**
 :white_small_square: `!purge` : purifier les channels relatifs à un tournoi.
@@ -96,12 +96,36 @@ lag_text=f"""
 :white_small_square: Vérifier qu'aucune autre connexion locale ne pompe la connexion.
 :white_small_square: S'assurer que la connexion au réseau est, si possible, câblée.
 :white_small_square: S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).
+:white_small_square: Project+ seulement : vérifier que le PC fait tourner le jeu à 60 FPS constants.
 
 :two: Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit :
 :white_small_square: Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.
 :white_small_square: Décrire sa méthode de connexion actuelle *(Wi-Fi, Ethernet direct, CPL -> ADSL, FFTH, 4G...)*.
 
 :three: Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).
+"""
+
+desync_text=f"""
+:one: **Détecter une desync sur Project+ (Dolphin Netplay) :**
+:white_small_square: Une desync résulte dans des inputs transmis au mauvais moment (l'adversaire SD à répétition, etc.).
+:white_small_square: Si Dolphin affiche qu'une desync a été détectée, c'est probablement le cas.
+
+:two: **Résoudre une desync, les 2 joueurs : **
+:white_small_square: Peuvent avoir recours à une __personne de tierce partie__ pour déterminer le fautif.
+:white_small_square: S'assurent qu'ils ont bien procédé à __l'ECB fix__ tel que décrit dans le tutoriel FR.
+:white_small_square: Vérifient qu'ils n'ont pas activé le support de la carte SD pour le Netplay *(off par défaut)*.
+:white_small_square: Doivent vérifier que leur __ISO possède un hash MD5 inclus__ dans la liste compatible :
+```
+d18726e6dfdc8bdbdad540b561051087
+d8560b021835c9234c28be7ff9bcaaeb
+5052e2e15f22772ab6ce4fd078221e96
+52ce7160ced2505ad5e397477d0ea4fe
+9f677c78eacb7e9b8617ab358082be32
+1c4d6175e3cbb2614bd805d32aea7311
+```
+*Clic droit sur \"Super Smash Bros Brawl\" > Onglet \"Info\" > Ligne \"MD5 Checksum\".*
+
+:three: **Si ces informations ne suffisent pas, contactez un TO.**
 """
 
 
@@ -332,7 +356,7 @@ async def reload_tournament():
 async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    annonce = (f"{server_logo} **{tournoi['name']}** - {tournoi['game']}\n"
+    annonce = (f"{server_logo} **{tournoi['name']}** - ***{tournoi['game']}***\n"
                f":white_small_square: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
                f":white_small_square: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
                f":white_small_square: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
@@ -531,6 +555,7 @@ async def check_tournament_state():
 
         await calculate_top8()
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
+        with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
 
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
@@ -549,12 +574,15 @@ async def check_tournament_state():
 
         tournoi_annonce = (f"<@&{challenger_id}> *On arrête le freeplay !* Le tournoi est sur le point de commencer. Petit rappel :\n"
                            f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
-                           f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{ruleset_channel_id}>.\n"
+                           f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{stagelist[tournoi['game']]['ruleset']}>.\n"
                            f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
                            f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
                            f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
                            f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
+
+        if tournoi["game"] == "Project+":
+            tournoi_annonce += "\n\n:information_source: **Project+** : en cas de desync, utilisez la commande `!desync` pour résoudre la situation."
 
         await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
@@ -800,8 +828,10 @@ async def launch_matches():
             else:
                 gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
 
+                with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
+
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
-                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{ruleset_channel_id}> (doit être lu au préalable).\n"
+                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{stagelist[tournoi['game']]['ruleset']}> (doit être lu au préalable).\n"
                                           f":white_small_square: La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
                                           f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
                                           f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
@@ -1181,6 +1211,8 @@ async def on_message(message):
     elif message.content == '!dq': await self_dq(message)
 
     elif message.content == '!help': await message.channel.send(help_text)
+
+    elif message.content == '!desync': await message.channel.send(desync_text)
 
     elif message.content == '!lag': await message.channel.send(lag_text)
 

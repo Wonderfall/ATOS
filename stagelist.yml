@@ -1,8 +1,10 @@
 Game 1:
+  ruleset:
   starters:
     - foo
 
 Game 2:
+  ruleset:
   starters:
     - foo
   counterpicks:
