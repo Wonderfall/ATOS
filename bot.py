@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.4"
+version                             = "4.5"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -137,6 +137,34 @@ def is_top8(match_round):
         return True
     else:
         return False
+
+### Retourner nom du round
+def nom_round(match_round):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    max_round_winner = tournoi["round_winner_top8"] + 2
+    max_round_looser = tournoi["round_looser_top8"] - 3
+
+    if match_round > 0:
+        if match_round == max_round_winner:
+            return "GF"
+        elif match_round == max_round_winner - 1:
+            return "WF"
+        elif match_round == max_round_winner - 2:
+            return "WS"
+        elif match_round == max_round_winner - 3:
+            return "WQ"
+        else:
+            return f"WR{match_round}"
+
+    elif match_round < 0:
+        if match_round == max_round_looser:
+            return "LF"
+        elif match_round == max_round_looser + 1:
+            return "LS"
+        elif match_round == max_round_looser + 2:
+            return "LQ"
+        else:
+            return f"LR{-match_round}"
 
 #### Notifier de l'initialisation
 @bot.event
@@ -481,11 +509,15 @@ async def check_tournament_state():
     ### Dès que le tournoi commence
     if (tournoi["statut"] == "pending") and (bracket['state'] == "underway"):
 
+        await calculate_top8()
+        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
+
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
         scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
                    f":arrow_forward: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
                    f":arrow_forward: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
+                   f":arrow_forward: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
                    f":arrow_forward: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
                    f":arrow_forward: En cas de mauvais score : contactez un TO pour une correction manuelle.")
 
@@ -501,14 +533,13 @@ async def check_tournament_state():
                            f"- Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
                            f"- Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
                            f"- En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
+                           f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**\n\n"
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
         await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-
-        await calculate_top8()
 
         scheduler.add_job(launch_matches, 'interval', id='launch_matches', minutes=1, replace_existing=True)
         scheduler.add_job(rappel_matches, 'interval', id='rappel_matches', minutes=1, replace_existing=True)
@@ -645,12 +676,13 @@ async def score_match(message):
         winner = participants[message.author.id]["challonge"] # Le gagnant est celui qui poste
         match = challonge.matches.index(tournoi['id'], state="open", participant_id=winner)
 
-        if match == []: return
+        if match[0]["underway_at"] == None:
+            await message.channel.send(f"<@{message.author.id}> Huh, le set pour lequel tu as donné le score n'a **pas encore commencé** !")
+            return
 
     except:
         await message.add_reaction("⚠️")
         return
-
 
     try:
         score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
@@ -663,12 +695,19 @@ async def score_match(message):
     else:
         if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
 
-        aimed_score = 3 if is_top8(match[0]["round"]) else 2
+        if is_top8(match[0]["round"]):
+            aimed_score, temps_min = 3, 10
+        else:
+            aimed_score, temps_min = 2, 5
+
+        debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
         
-        if int(score[0]) < aimed_score:
+        if (int(score[0]) < aimed_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
             await message.add_reaction("⚠️")
-            await message.channel.send(f"<@{message.author.id}> **Ton score est incorrect**. Rappel : BO3 jusqu'à top 8 qui a lieu en BO5.")
+            await message.channel.send(f"<@{message.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
             return
+
+        elif (match[0]["underway_at"] == None)
 
         for joueur in participants:
             if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
@@ -676,23 +715,24 @@ async def score_match(message):
 
         if winner == participants[player2]["challonge"]:
             score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
-            looser = player1
-        else:
-            looser = player2
-
 
     try:
-
         challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
         await message.add_reaction("✅")
+
+    except:
+        await message.add_reaction("⚠️")
+
+    else:
+        gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
+
+        if gaming_channel != None:
+            gaming_channel.send(f":bell: **Score rapporté** : **{participants[message.author.id]['display_name']}** gagne **{score}** !\n*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
             tournoi["on_stream"] = None
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
             await call_stream()
-
-    except:
-        await message.add_reaction("⚠️")
 
 
 ### Lancer matchs ouverts
@@ -763,7 +803,7 @@ async def launch_matches():
             on_stream = "(**on stream**) :tv:" if match["suggested_play_order"] in stream else ""
             top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
 
-            sets += f":arrow_forward: À lancer : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
+            sets += f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
 
     if sets != "": await bot.get_channel(queue_channel_id).send(sets)
 
@@ -952,8 +992,6 @@ async def calculate_top8():
     tournoi["round_looser_top8"] = max_round_looser + 3
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-
-    await bot.get_channel(tournoi_channel_id).send(f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**")
 
 
 ### Appeler les joueurs on stream
