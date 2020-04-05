@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.15"
+version                             = "4.16"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -1094,7 +1094,13 @@ async def rappel_matches():
         if (match["underway_at"] != None) and (match["suggested_play_order"] not in stream) and (match["suggested_play_order"] != tournoi["on_stream"]):
 
             debut_set = dateutil.parser.parse(str(match["underway_at"])).replace(tzinfo=None)
-            seuil = 42 if is_top8(match["round"]) else 28 # Calculé selon (tps max match * nb max matchs) + 7 minutes
+
+            if tournoi['game'] == 'Super Smash Bros. Ultimate':
+                seuil = 42 if is_top8(match["round"]) else 28 # Calculé selon (tps max match * nb max matchs) + 7 minutes
+            elif tournoi['game'] == 'Project+':
+                seuil = 47 if is_top8(match["round"]) else 31 # Idem
+            else:
+                return
 
             if datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil):
 
@@ -1106,13 +1112,13 @@ async def rappel_matches():
                         if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
                         if participants[joueur]["challonge"] == match["player2_id"]: player2 = guild.get_member(joueur)
 
-                    # Avertissement
+                    # Avertissement unique
                     if match["suggested_play_order"] not in tournoi["warned"]:
 
-                        alerte = (f":timer: **Je n'ai toujours pas reçu de score pour ce set !** <@{player1.id}> <@{player2.id}>\n"
-                                  f":white_small_square: Merci de le poster dans <#{scores_channel_id}> dès que possible.\n"
-                                  f":white_small_square: Dans 10 minutes, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
-                                  f":white_small_square: La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.")
+                        alerte = (f":timer: **Ce set n'a toujours pas reçu de score !** <@{player1.id}> <@{player2.id}>\n"
+                                  f":white_small_square: Le gagnant est prié de le poster dans <#{scores_channel_id}> dès que possible.\n"
+                                  f":white_small_square: Sous peu, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
+                                  f":white_small_square: La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.\n")
 
                         await gaming_channel.send(alerte)
 
@@ -1120,23 +1126,44 @@ async def rappel_matches():
                         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
                     # DQ pour inactivité (exceptionnel...) -> fixé à 10 minutes après l'avertissement
-                    elif (match["suggested_play_order"] in tournoi["warned"]) and (datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10)):
+                    elif datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10):
 
                         async for message in gaming_channel.history(): # Rechercher qui est la dernière personne active du channel
-                            if (message.author != bot.user) and (to_id not in [y.id for y in message.author.roles]):
-                                winner = message.author
-                                break
 
-                        to_dq = player2 if winner.id == player1.id else player1
+                            if (message.author != bot.user) and (to_id not in [y.id for y in message.author.roles]): # La personne ne doit être ni un bot ni un TO, donc un joueur
 
-                        await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner}> passe au round suivant.\n-<@{to_dq}> est DQ du tournoi.")
+                                try:
+                                    winner
+                                except:
+                                    winner, winner_last_activity = message.author, message.created_at # Le premier résultat sera assigné à winner
+                                else:
+                                    if message.author != winner:
+                                        looser, looser_last_activity = message.author, message.created_at # Le second résultat sera assigné à looser
+                                        break
+                        
+                        try:
+                            winner
+                        except: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
+                            await gaming_channel.send(f"<@&{to_id}> **DQ automatique des 2 joueurs pour inactivité : <@{player1.id}> & <@{player2.id}>**")
+                            challonge.participants.destroy(tournoi["id"], participants[player1.id]['challonge'])
+                            challonge.participants.destroy(tournoi["id"], participants[player2.id]['challonge'])
+                            return
 
                         try:
-                            await to_dq.send("Désolé, mais tu as été DQ du tournoi pour inactivité. Ceci est un message automatique, pour toute plainte merci de contacter les TOs.")
-                        except:
-                            pass
-                        
-                        challonge.participants.destroy(tournoi["id"], participants[to_dq.id]['challonge'])
+                            looser
+                        except: # S'il n'y a pas eu de résultat pour un second joueur différent : DQ de l'inactif
+                            looser = player2 if winner.id == player1.id else player1
+                            await gaming_channel.send(f"<@&{to_id}> **DQ automatique de <@{looser.id}> pour inactivité.**")
+                            challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
+                            return
+
+                        if winner_last_activity - looser_last_activity > datetime.timedelta(minutes = 10): # Si différence d'inactivité de plus de 10 minutes
+                            await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner.id}> passe au round suivant.\n-<@{looser.id}> est DQ du tournoi.")
+                            challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
+
+                        else: # Si pas de différene notable, demander une décision manuelle
+                            await gaming_channel.send(f"<@&{to_id}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise")
+
 
 ### Obtenir stagelist
 @bot.event
