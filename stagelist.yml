@@ -1,10 +1,12 @@
 Game 1:
   ruleset:
+  icon:
   starters:
     - foo
 
 Game 2:
   ruleset:
+  icon:
   starters:
     - foo
   counterpicks:
