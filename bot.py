@@ -524,7 +524,7 @@ async def end_check_in():
     except:
         pass
 
-    for inscrit in participants:
+    for inscrit in list(participants):
         if participants[inscrit]["checked_in"] == False:
             challonge.participants.destroy(tournoi["id"], participants[inscrit]['challonge'])
             try:
@@ -1305,8 +1305,6 @@ async def on_message(message):
     elif message.content == '!lag': await send_lag_text(message)
 
     elif message.content == '!stages': await get_stagelist(message)
-
-    elif message.content == '!end': await end_check_in()
 
     elif ((message.content in ["!purge", "!stream"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
         if message.content == '!purge': await purge_channels()
