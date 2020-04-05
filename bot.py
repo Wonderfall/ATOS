@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.16"
+version                             = "4.17"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -529,7 +529,9 @@ async def end_check_in():
         if participants[inscrit]["checked_in"] == False:
             challonge.participants.destroy(tournoi["id"], participants[inscrit]['challonge'])
             try:
-                await guild.get_member(inscrit).remove_roles(guild.get_role(challenger_id))
+                to_dq = guild.get_member(inscrit)
+                await to_dq.remove_roles(guild.get_role(challenger_id))
+                await to_dq.send(f"Tu as été DQ du tournoi {tournoi['name']} car tu n'as pas check-in à temps, désolé !")
             except:
                 pass
             del participants[inscrit]
@@ -1301,7 +1303,7 @@ async def on_message(message):
     elif message.content == '!lag': await send_lag_text(message)
     elif message.content == '!stages': await get_stagelist(message)
 
-    # Commandes adminstrateur
+    # Commandes admin
     elif ((message.content in ["!purge", "!stream"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
         if message.content == '!purge': await purge_channels()
         elif message.content == '!stream': await list_stream(message)
