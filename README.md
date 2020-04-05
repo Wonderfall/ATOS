@@ -12,6 +12,7 @@ It stands for *Automated Tournament Organizer for Smash*, or more precisely *Aut
 - Registration
 - Check-in
 - Match queue
+- Unique channel for each set
 - Stream queue
 - Score detection
 - Reminders
