@@ -582,6 +582,7 @@ async def check_tournament_state():
     if (tournoi["statut"] == "pending") and (bracket['state'] == "underway"):
 
         await calculate_top8()
+
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
         with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
@@ -803,7 +804,8 @@ async def score_match(message):
         gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
 
         if gaming_channel != None:
-            gaming_channel.send(f":bell: **Score rapporté** : **{participants[message.author.id]['display_name']}** gagne **{score}** !\n*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
+            gaming_channel.send(f":bell: __Score rapporté__ : **{participants[message.author.id]['display_name']}** gagne **{score}** !\n"
+                                f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
             tournoi["on_stream"] = None
@@ -1144,10 +1146,10 @@ async def rappel_matches():
                         try:
                             winner
                         except: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
-                            await gaming_channel.send(f"<@&{to_id}> **DQ automatique des 2 joueurs pour inactivité : <@{player1.id}> & <@{player2.id}>**")
+                            await gaming_channel.send(f"<@&{to_id}> **DQ automatique des __2 joueurs__ pour inactivité : <@{player1.id}> & <@{player2.id}>**")
                             challonge.participants.destroy(tournoi["id"], participants[player1.id]['challonge'])
                             challonge.participants.destroy(tournoi["id"], participants[player2.id]['challonge'])
-                            return
+                            continue
 
                         try:
                             looser
@@ -1155,13 +1157,13 @@ async def rappel_matches():
                             looser = player2 if winner.id == player1.id else player1
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique de <@{looser.id}> pour inactivité.**")
                             challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
-                            return
+                            continue
 
                         if winner_last_activity - looser_last_activity > datetime.timedelta(minutes = 10): # Si différence d'inactivité de plus de 10 minutes
                             await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner.id}> passe au round suivant.\n-<@{looser.id}> est DQ du tournoi.")
                             challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
 
-                        else: # Si pas de différene notable, demander une décision manuelle
+                        else: # Si pas de différence notable, demander une décision manuelle
                             await gaming_channel.send(f"<@&{to_id}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise")
 
 
