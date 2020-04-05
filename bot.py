@@ -268,7 +268,8 @@ async def get_tournament(url):
         "fin_check-in": dateutil.parser.parse(str(bracket["start_at"])).replace(tzinfo=None) - datetime.timedelta(minutes = 10),
         "on_stream": None,
         "stream": ["N/A", "N/A"],
-        "warned": []
+        "warned": [],
+        "timeout": []
     }
 
     return tournoi
@@ -1117,6 +1118,9 @@ async def rappel_matches():
                     # Avertissement unique
                     if match["suggested_play_order"] not in tournoi["warned"]:
 
+                        tournoi["warned"].append(match["suggested_play_order"])
+                        with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+
                         alerte = (f":timer: **Ce set n'a toujours pas reçu de score !** <@{player1.id}> <@{player2.id}>\n"
                                   f":white_small_square: Le gagnant est prié de le poster dans <#{scores_channel_id}> dès que possible.\n"
                                   f":white_small_square: Sous peu, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
@@ -1124,11 +1128,11 @@ async def rappel_matches():
 
                         await gaming_channel.send(alerte)
 
-                        tournoi["warned"].append(match["suggested_play_order"])
-                        with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-
                     # DQ pour inactivité (exceptionnel...) -> fixé à 10 minutes après l'avertissement
-                    elif datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10):
+                    elif (match["suggested_play_order"] not in tournoi["timeout"]) and (datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10)):
+
+                        tournoi["timeout"].append(match["suggested_play_order"])
+                        with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
                         async for message in gaming_channel.history(): # Rechercher qui est la dernière personne active du channel
 
@@ -1287,25 +1291,17 @@ async def on_raw_reaction_remove(event):
 async def on_message(message):
 
     if message.author.id == bot.user.id: return
-
     elif message.channel.id == check_in_channel_id: await check_in(message)
-
     elif message.content == '!flip': await flipcoin(message)
-
     elif (message.channel.id == scores_channel_id) and (message.content.startswith("!win ")): await score_match(message)
-
     elif message.content == '!bracket': await post_bracket(message)
-
     elif message.content == '!dq': await self_dq(message)
-
     elif message.content == '!help': await message.channel.send(help_text)
-
     elif message.content == '!desync': await message.channel.send(desync_text)
-
     elif message.content == '!lag': await send_lag_text(message)
-
     elif message.content == '!stages': await get_stagelist(message)
 
+    # Commandes adminstrateur
     elif ((message.content in ["!purge", "!stream"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
         if message.content == '!purge': await purge_channels()
         elif message.content == '!stream': await list_stream(message)
