@@ -801,11 +801,11 @@ async def score_match(message):
         await message.add_reaction("⚠️")
 
     else:
-        gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
+        gaming_channel = discord.utils.get(message.guild.text_channels, name=str(match[0]["suggested_play_order"]))
 
         if gaming_channel != None:
-            gaming_channel.send(f":bell: __Score rapporté__ : **{participants[message.author.id]['display_name']}** gagne **{score}** !\n"
-                                f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
+            await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[message.author.id]['display_name']}** gagne **{score}** !\n"
+                                      f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
             tournoi["on_stream"] = None
@@ -1079,7 +1079,7 @@ async def calculate_top8():
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
 
-### Appeler les joueurs on stream
+### Lancer un rappel de matchs
 @bot.event
 async def rappel_matches():
 
@@ -1305,6 +1305,8 @@ async def on_message(message):
     elif message.content == '!lag': await send_lag_text(message)
 
     elif message.content == '!stages': await get_stagelist(message)
+
+    elif message.content == '!end': await end_check_in()
 
     elif ((message.content in ["!purge", "!stream"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
         if message.content == '!purge': await purge_channels()
