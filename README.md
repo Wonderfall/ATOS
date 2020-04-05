@@ -21,6 +21,8 @@ It stands for *Automated Tournament Organizer for Smash*, or more precisely *Aut
 - Some commands
 - Multi-game supports (Smash-focused)
 
+>The idea : you create the tournament on Challonge, you pass the URL to the bot with a Discord command, and it takes it from here (from handling the registration to posting the final results, at the exception of determining which sets should be on stream). Cool, right?
+
 ### Use
 Its primary use is, as you can see, for a french server which is organizing online weeklies for Smash Bros. Ultimate. You can use it for your own, you can enhance it, that's your call.
 
