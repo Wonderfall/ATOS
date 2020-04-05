@@ -6,7 +6,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.10"
+version                             = "4.14"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -96,7 +96,6 @@ lag_text=f"""
 :white_small_square: Vérifier qu'aucune autre connexion locale ne pompe la connexion.
 :white_small_square: S'assurer que la connexion au réseau est, si possible, câblée.
 :white_small_square: S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).
-:white_small_square: Project+ seulement : vérifier que le PC fait tourner le jeu à 60 FPS constants.
 
 :two: Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit :
 :white_small_square: Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.
@@ -196,6 +195,16 @@ def nom_round(match_round):
         else:
             return f"LR{-match_round}"
 
+### Accès stream
+def get_access_stream():
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    if tournoi['game'] == 'Project+':
+        return f":white_small_square: **Accès host Dolphin Netplay** : `{tournoi['stream'][0]}`"
+
+    elif tournoi['game'] == 'Super Smash Bros. Ultimate':
+        return f":white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`"
+
 
 #### Notifier de l'initialisation
 @bot.event
@@ -208,7 +217,7 @@ async def on_ready():
     print(f"User : {bot.user.name}               ")
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
-    await bot.change_presence(activity=discord.Game(version))
+    await bot.change_presence(activity=discord.Game(version)) # As of April 2020, CustomActivity is not supported for bots
     await reload_tournament()
 
 
@@ -245,7 +254,7 @@ async def get_tournament(url):
 
     tournoi = {
         "name": bracket["name"],
-        "game": bracket["game_name"],
+        "game": bracket["game_name"].title(), # Non-recognized games are lowercase for Challonge
         "url": url,
         "id": bracket["id"],
         "limite": bracket["signup_cap"],
@@ -265,6 +274,8 @@ async def get_tournament(url):
 @bot.event
 async def setup_tournament(message):
 
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
     url = message.content.replace("!setup ", "")
     tournoi = await get_tournament(url)
 
@@ -274,6 +285,10 @@ async def setup_tournament(message):
 
     elif datetime.datetime.now() > tournoi["début_tournoi"]:
         await message.add_reaction("🕐")
+        return
+
+    elif tournoi['game'] not in stagelist:
+        await message.add_reaction("❔")
         return
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
@@ -355,13 +370,14 @@ async def reload_tournament():
 @bot.event
 async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
-    annonce = (f"{server_logo} **{tournoi['name']}** - ***{tournoi['game']}***\n"
-               f":white_small_square: **Date** : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
-               f":white_small_square: **Check-in** : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
-               f":white_small_square: **Limite** : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-               f":white_small_square: **Bracket** : {tournoi['url']}\n"
-               f":white_small_square: **Format** : singles, double élimination\n\n"
+    annonce = (f"{server_logo} **{tournoi['name']}** - {stagelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
+               f":white_small_square: __Date__ : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
+               f":white_small_square: __Check-in__ : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
+               f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
+               f":white_small_square: __Bracket__ : {tournoi['url']}\n"
+               f":white_small_square: __Format__ : singles, double élimination\n\n"
                "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
 
@@ -555,7 +571,7 @@ async def check_tournament_state():
 
         await calculate_top8()
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
-        with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
+        with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
         await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
@@ -572,7 +588,7 @@ async def check_tournament_state():
 
         await bot.get_channel(queue_channel_id).send(queue_annonce)
 
-        tournoi_annonce = (f"<@&{challenger_id}> *On arrête le freeplay !* Le tournoi est sur le point de commencer. Petit rappel :\n"
+        tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les confignes :\n"
                            f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
                            f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{stagelist[tournoi['game']]['ruleset']}>.\n"
                            f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
@@ -582,7 +598,7 @@ async def check_tournament_state():
                            f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
         if tournoi["game"] == "Project+":
-            tournoi_annonce += "\n\n:information_source: **Project+** : en cas de desync, utilisez la commande `!desync` pour résoudre la situation."
+            tournoi_annonce += f"\n\n{stagelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `!desync` pour résoudre la situation."
 
         await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
@@ -828,7 +844,7 @@ async def launch_matches():
             else:
                 gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
 
-                with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
+                with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
                                           f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{stagelist[tournoi['game']]['ruleset']}> (doit être lu au préalable).\n"
@@ -865,13 +881,18 @@ async def setup_stream(message):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     arene = message.content.replace("!setstream ", "").split()
 
-    if len(arene) == 2:
+    if tournoi['game'] == 'Super Smash Bros. Ultimate' and len(arene) == 2:
         tournoi["stream"] = arene
-        with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-        await message.add_reaction("✅")
+
+    elif tournoi['game'] == 'Project+' and len(arene) == 1:
+        tournoi["stream"] = arene
 
     else:
         await message.add_reaction("⚠️")
+        return
+
+    with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+    await message.add_reaction("✅")
 
 
 ### Ajouter un set dans la stream queue
@@ -936,7 +957,7 @@ async def list_stream(message):
         await message.add_reaction("⚠️")
         return
 
-    msg = f":information_source: Arène de stream :\n:white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`\n"
+    msg = f":information_source: Arène de stream :\n{get_access_stream()}\n"
 
     if tournoi["on_stream"] != None:
 
@@ -1010,10 +1031,10 @@ async def call_stream():
             gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
 
             if gaming_channel == None:
-                await player1.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
-                await player2.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n:arrow_forward: **ID** : `{tournoi['stream'][0]}`\n:arrow_forward: **MDP** : `{tournoi['stream'][1]}`")
+                await player1.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n{get_access_stream()}")
+                await player2.send(f"C'est ton tour de passer on stream ! N'oublie pas de donner les scores dès que le set est fini. Voici les codes d'accès de l'arène :\n{get_access_stream()}")
             else:
-                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** <@{player1.id}> <@{player2.id}>\n\nVoici les codes d'accès de l'arène :\n:white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`")
+                await gaming_channel.send(f":clapper: C'est votre tour de passer on stream ! **N'oubliez pas de donner les scores dès que le set est fini.** <@{player1.id}> <@{player2.id}>\n\nVoici les codes d'accès de l'arène :\n{get_access_stream()}")
 
             await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
@@ -1109,7 +1130,7 @@ async def rappel_matches():
 @bot.event
 async def get_stagelist(message):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.load(f)
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
     try:
         msg = f":map: **Stages légaux pour {tournoi['game']} :**\n:white_small_square: __Starters__ :\n"
@@ -1123,6 +1144,32 @@ async def get_stagelist(message):
 
     except:
         await message.channel.send(":warning: Aucun tournoi n'est en cours, je ne peux pas fournir de stagelist pour un jeu inconnu.")
+
+
+### Lag
+@bot.event
+async def send_lag_text(message):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
+    msg = lag_text
+
+    try:
+        if tournoi['game'] == 'Project+':
+
+            msg += (f"\n{stagelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
+                    ":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
+                    "- Baisser la résolution interne dans les paramètres graphiques.\n"
+                    "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
+                    "- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
+                    ":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
+                    "- Le ping doit rester en-dessous de 40ms si possible, si ce n'est pas le cas : augmenter le buffer à 6 ou 8.\n"
+                    "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
+                    ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
+    except:
+        pass
+
+    await message.channel.send(msg)
 
 
 ### Si administrateur
@@ -1214,7 +1261,7 @@ async def on_message(message):
 
     elif message.content == '!desync': await message.channel.send(desync_text)
 
-    elif message.content == '!lag': await message.channel.send(lag_text)
+    elif message.content == '!lag': await send_lag_text(message)
 
     elif message.content == '!stages': await get_stagelist(message)
 
