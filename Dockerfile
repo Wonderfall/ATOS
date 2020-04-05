@@ -6,7 +6,7 @@ WORKDIR /bot
 
 RUN apk -U upgrade \
  && apk add python3 python3-dev build-base su-exec tini tzdata \
- && pip3 install --no-cache discord.py pychal python-dateutil apscheduler PyYAML \
+ && pip3 install --no-cache discord.py pychal python-dateutil apscheduler PyYAML babel \
  && cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
  && apk del build-base && rm -rf /var/cache/apk/*
 

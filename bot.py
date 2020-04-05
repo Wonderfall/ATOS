@@ -1,18 +1,22 @@
 import discord, random, logging, os, json, re, challonge, dateutil.parser, datetime, asyncio, yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from babel.dates import format_date, format_time
 
 with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
-if config["debug"] == True: logging.basicConfig(level=logging.DEBUG)
+if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.14"
+version                             = "4.15"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
 participants_path                   = config["paths"]["participants"]
 stream_path                         = config["paths"]["stream"]
 stagelist_path                      = config["paths"]["stagelist"]
+
+### Locale
+language                            = config["system"]["language"]
 
 #### Discord IDs
 guild_id                            = config["discord"]["guild"]
@@ -373,8 +377,8 @@ async def annonce_inscription():
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
     annonce = (f"{server_logo} **{tournoi['name']}** - {stagelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
-               f":white_small_square: __Date__ : le {tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}\n"
-               f":white_small_square: __Check-in__ : de {tournoi['début_check-in'].strftime('%Hh%M')} à {tournoi['fin_check-in'].strftime('%Hh%M')}\n"
+               f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
+               f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
                f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
                f":white_small_square: __Bracket__ : {tournoi['url']}\n"
                f":white_small_square: __Format__ : singles, double élimination\n\n"
@@ -390,7 +394,9 @@ async def annonce_inscription():
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
     await annonce_msg.add_reaction("✅")
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! Ce tournoi aura lieu le **{tournoi['début_tournoi'].strftime('%d.%m.%y à %Hh%M')}**.")
+
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> !\n"
+                                                   f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
 
 
 ### Inscription
@@ -478,8 +484,13 @@ async def start_check_in():
 
     scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
 
-    await bot.get_channel(inscriptions_channel_id).send(f":information_source: Le check-in a commencé dans <#{check_in_channel_id}>. Vous pouvez toujours vous inscrire ici jusqu'à **{tournoi['fin_check-in'].strftime('%Hh%M')}** sans besoin de check-in par la suite, et tant qu'il y a de la place.")
-    await bot.get_channel(check_in_channel_id).send(f"<@&{challenger_id}> Le check-in pour **{tournoi['name']}** a commencé : vous avez jusqu'à **{tournoi['fin_check-in'].strftime('%Hh%M')}** pour signaler votre présence, sinon vous serez retiré automatiquement du tournoi.\n- Utilisez `!in` pour confirmer votre inscription\n- Utilisez `!out` pour vous désinscrire")
+    await bot.get_channel(inscriptions_channel_id).send(f":information_source: Le check-in a commencé dans <#{check_in_channel_id}>. "
+                                                        f"Vous pouvez toujours vous inscrire ici jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** tant qu'il y a de la place.")
+
+    await bot.get_channel(check_in_channel_id).send(f"<@&{challenger_id}> Le check-in pour **{tournoi['name']}** a commencé : "
+                                                    f"vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
+                                                    f":white_small_square: Utilisez `!in` pour confirmer votre inscription\n:white_small_square: Utilisez `!out` pour vous désinscrire\n\n"
+                                                    f"*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*")
 
 
 ### Rappel de check-in
@@ -496,7 +507,8 @@ async def rappel_check_in():
             rappel_msg += f"- <@{inscrit}>\n"
 
     if rappel_msg != "":
-        await bot.get_channel(check_in_channel_id).send(f":clock1: **Rappel de check-in !**\n{rappel_msg}\n*Vous avez jusqu'à {tournoi['fin_check-in'].strftime('%Hh%M')}, sinon vous serez désinscrit(s) automatiquement.*")
+        await bot.get_channel(check_in_channel_id).send(f":clock1: **Rappel de check-in !**\n{rappel_msg}\n"
+                                                        f"*Vous avez jusqu'à {format_time(tournoi['fin_check-in'], format='short', locale=language)}, sinon vous serez désinscrit(s) automatiquement.*")
 
 
 ### Fin du check-in
@@ -527,8 +539,8 @@ async def end_check_in():
     annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
     await annonce.clear_reaction("✅")
 
-    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé.** Les personnes n'ayant pas check-in ont été retirées du bracket. Contactez les TOs s'il y a un quelconque problème, merci de votre compréhension.")
-    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs s'il y a un quelconque problème, merci de votre compréhension.")
+    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé.** Les personnes n'ayant pas check-in ont été retirées du bracket. Contactez les TOs en cas de besoin.")
+    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs en cas de besoin.")
 
 
 ### Prise en charge du check-in et check-out
@@ -588,7 +600,7 @@ async def check_tournament_state():
 
         await bot.get_channel(queue_channel_id).send(queue_annonce)
 
-        tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les confignes :\n"
+        tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n"
                            f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
                            f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{stagelist[tournoi['game']]['ruleset']}>.\n"
                            f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
@@ -1210,7 +1222,7 @@ async def annonce_resultats():
                   f"5e : {fifth[0]} / {fifth[1]}\n"
                   f"7e : {seventh[0]} / {seventh[1]}\n\n"
                   f":arrow_forward: **Bracket :** {tournoi['url']}\n"
-                  "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...")
+                  f"Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...")
     
     await bot.get_channel(resultats_channel_id).send(classement)
 

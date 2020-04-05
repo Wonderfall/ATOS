@@ -1,5 +1,7 @@
 # version 4.x
-debug: True
+system:
+  debug: True
+  language: fr_FR
 
 paths:
   tournoi: data/tournoi.json
