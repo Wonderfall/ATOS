@@ -20,6 +20,7 @@ It stands for *Automated Tournament Organizer for Smash*, or more precisely *Aut
 - Announcements (including results)
 - Welcoming new members
 - Some commands
+- Roles gestion
 - Multi-game supports (Smash-focused)
 
 >The idea : you create the tournament on Challonge, you pass the URL to the bot with a Discord command, and it takes it from here (from handling the registration to posting the final results, at the exception of determining which sets should be on stream). Cool, right?
