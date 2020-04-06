@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.17"
+version                             = "4.18"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -31,6 +31,7 @@ stream_channel_id                   = config["discord"]["channels"]["stream"]
 queue_channel_id                    = config["discord"]["channels"]["queue"]
 tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
 resultats_channel_id                = config["discord"]["channels"]["resultats"]
+roles_channel_id                    = config["discord"]["channels"]["roles"]
 
 ### Info, non-interactive channels
 deroulement_channel_id              = config["discord"]["channels"]["deroulement"]
@@ -59,8 +60,9 @@ challonge_api_key                   = config["challonge"]["api_key"]
 ### Texts
 welcome_text=f"""
 Je t'invite à consulter le channel <#{deroulement_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi.
-
 N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>.
+
+Je te conseille de t'attribuer un rôle dans <#{roles_channel_id}> par la même occasion.
 
 Enfin, amuse-toi bien !
 """
@@ -396,7 +398,7 @@ async def annonce_inscription():
 
     await annonce_msg.add_reaction("✅")
 
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> !\n"
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! <@&{stagelist[tournoi['game']]['role']}>\n"
                                                    f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
 
 
@@ -1262,17 +1264,73 @@ async def annonce_resultats():
     await bot.get_channel(resultats_channel_id).send(classement)
 
 
+### Ajouter un rôle
+@bot.event
+async def attribution_role(event):
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
+    for game in stagelist:
+
+        if event.emoji.name == re.search(r'\:(.*?)\:', stagelist[game]['icon']).group(1):
+            role = event.member.guild.get_role(stagelist[game]['role'])
+
+            try:
+                await event.member.add_roles(role)
+                await event.member.send(f"Le rôle **{role.name}** t'a été attribué avec succès : tu recevras des informations concernant les tournois *{game}* !")
+            except:
+                pass
+
+        elif event.emoji.name == stagelist[game]['icon_1v1']:
+            role = event.member.guild.get_role(stagelist[game]['role_1v1'])
+
+            try:
+                await event.member.add_roles(role)
+                await event.member.send(f"Le rôle **{role.name}** t'a été attribué avec succès : tu seras contacté si un joueur cherche des combats sur *{game}* !")
+            except:
+                pass
+
+
+### Enlever un rôle
+@bot.event
+async def retirer_role(event):
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
+    guild = bot.get_guild(id=guild_id) # due to event.member not being available
+
+    for game in stagelist:
+
+        if event.emoji.name == re.search(r'\:(.*?)\:', stagelist[game]['icon']).group(1):
+            role, member = guild.get_role(stagelist[game]['role']), guild.get_member(event.user_id)
+
+            try:
+                await member.remove_roles(role)
+                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne recevras donc plus les informations concernant les tournois *{game}*.")
+            except:
+                pass
+
+        elif event.emoji.name == stagelist[game]['icon_1v1']:
+            role, member = guild.get_role(stagelist[game]['role_1v1']), guild.get_member(event.user_id)
+
+            try:
+                await member.remove_roles(role)
+                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu seras plus contacté si un joueur cherche des combats sur *{game}*.")
+            except:
+                pass
+
+
 ### À chaque ajout de réaction
 @bot.event
 async def on_raw_reaction_add(event):
     if event.user_id == bot.user.id: return
 
-    if (event.emoji.name == "✅") and (event.channel_id == inscriptions_channel_id):
+    elif (event.emoji.name == "✅") and (event.channel_id == inscriptions_channel_id):
 
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
         if event.message_id == tournoi["annonce_id"]:
             await inscrire(event.member) # available for REACTION_ADD only
+
+    elif (event.channel_id == roles_channel_id): await attribution_role(event)
 
 
 ### À chaque suppression de réaction
@@ -1280,12 +1338,14 @@ async def on_raw_reaction_add(event):
 async def on_raw_reaction_remove(event):
     if event.user_id == bot.user.id: return
 
-    if (event.emoji.name == "✅") and (event.channel_id == inscriptions_channel_id):
+    elif (event.emoji.name == "✅") and (event.channel_id == inscriptions_channel_id):
 
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
         if event.message_id == tournoi["annonce_id"]:
             await desinscrire(bot.get_guild(id=guild_id).get_member(event.user_id)) # event.member not available for REACTION_REMOVE
+
+    elif (event.channel_id == roles_channel_id): await retirer_role(event)
 
 
 ### À chaque message
