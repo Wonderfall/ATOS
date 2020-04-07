@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.18"
+version                             = "4.19"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -1238,6 +1238,8 @@ async def author_is_admin(message):
 async def annonce_resultats():
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
     participants, resultats = challonge.participants.index(tournoi["id"]), []
 
     if len(participants) < 8:
@@ -1250,16 +1252,24 @@ async def annonce_resultats():
     resultats.sort()
     fifth = [y for x, y in resultats if x == 5]
     seventh = [y for x, y in resultats if x == 7]
+
+    ending = random.choice([
+        "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...",
+        "Merci à tous d'avoir participé, on se remet ça très bientôt ! Prenez soin de vous.",
+        "Félicitations à eux. N'oubliez pas que la clé est la persévérance ! Croyez toujours en vous.",
+        "Ce fut un plaisir en tant que bot d'aider à la gestion de ce tournoi et d'assister à vos merveileux sets."
+    ])
     
-    classement = (f"{server_logo} Résultats du **{tournoi['name']}** :\n\n"
+    classement = (f"{server_logo} **Résultats du {tournoi['name']}** ({len(participants)} entrants) :\n\n"
                   f":trophy: **{resultats[0][1]}**\n"
                   f":second_place: {resultats[1][1]}\n"
-                  f":third_place: {resultats[2][1]}\n\n"
-                  f"4e : {resultats[3][1]}\n"
-                  f"5e : {fifth[0]} / {fifth[1]}\n"
-                  f"7e : {seventh[0]} / {seventh[1]}\n\n"
-                  f":arrow_forward: **Bracket :** {tournoi['url']}\n"
-                  f"Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...")
+                  f":third_place: {resultats[2][1]}\n"
+                  f"**4e** : {resultats[3][1]}\n"
+                  f"**5e** : {fifth[0]} / {fifth[1]}\n"
+                  f"**7e** : {seventh[0]} / {seventh[1]}\n\n"
+                  f"{stagelist[tournoi['game']]['icon']} {tournoi['game']}\n"
+                  f":link: **Bracket :** {tournoi['url']}\n\n"
+                  f"{ending}")
     
     await bot.get_channel(resultats_channel_id).send(classement)
 
@@ -1304,7 +1314,7 @@ async def retirer_role(event):
 
             try:
                 await member.remove_roles(role)
-                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne recevras donc plus les informations concernant les tournois *{game}*.")
+                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne recevras plus les informations concernant les tournois *{game}*.")
             except:
                 pass
 
@@ -1313,7 +1323,7 @@ async def retirer_role(event):
 
             try:
                 await member.remove_roles(role)
-                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu seras plus contacté si un joueur cherche des combats sur *{game}*.")
+                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne seras plus contacté si un joueur cherche des combats sur *{game}*.")
             except:
                 pass
 
