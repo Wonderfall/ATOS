@@ -559,19 +559,20 @@ async def check_in(message):
 
         if message.content == "!in":
             participants[message.author.id]["checked_in"] = True
+            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await message.add_reaction("✅")
 
         elif message.content == "!out":
             challonge.participants.destroy(tournoi["id"], participants[message.author.id]['challonge'])
             await message.author.remove_roles(message.guild.get_role(challenger_id))
             del participants[message.author.id]
+            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", message.author)
             await message.add_reaction("✅")
 
         else:
             return
 
-        with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
         await update_annonce()
 
 
