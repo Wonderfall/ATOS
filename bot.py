@@ -780,13 +780,13 @@ async def score_match(message):
         if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
 
         if is_top8(match[0]["round"]):
-            aimed_score, temps_min = 3, 10
+            aimed_score, looser_score, temps_min = 3, [0, 1, 2], 10
         else:
-            aimed_score, temps_min = 2, 5
+            aimed_score, looser_score, temps_min = 2, [0, 1], 5
 
         debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
-        
-        if (int(score[0]) < aimed_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
+
+        if (int(score[0]) < aimed_score) or (int(score[2] not in looser_score)) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
             await message.add_reaction("⚠️")
             await message.channel.send(f"<@{message.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
             return
