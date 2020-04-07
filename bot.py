@@ -411,7 +411,8 @@ async def inscrire(member):
 
     if len(participants) >= tournoi['limite']:
         try:
-            await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", member)
+            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+            await inscription.remove_reaction("✅", member)
         except:
             pass
         return
@@ -450,7 +451,8 @@ async def desinscrire(member):
 
         if datetime.datetime.now() < tournoi["fin_check-in"]:
             try:
-                await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", member)
+                inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+                await inscription.remove_reaction("✅", member)
             except:
                 pass
 
@@ -567,7 +569,8 @@ async def check_in(message):
             await message.author.remove_roles(message.guild.get_role(challenger_id))
             del participants[message.author.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-            await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", message.author)
+            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+            await inscription.remove_reaction("✅", message.author)
             await message.add_reaction("✅")
 
         else:
@@ -734,7 +737,8 @@ async def self_dq(message):
             await message.author.remove_roles(message.guild.get_role(challenger_id))
 
         if datetime.datetime.now() < tournoi["fin_check-in"]:
-            await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"]).remove_reaction("✅", message.author)
+            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+            await inscription.remove_reaction("✅", message.author)
 
         if tournoi["statut"] == "pending":
             del participants[message.author.id]
