@@ -386,7 +386,7 @@ async def annonce_inscription():
                f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
                f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
                f":white_small_square: __Bracket__ : {tournoi['url']}\n"
-               f":white_small_square: __Format__ : singles, double élimination\n\n"
+               f":white_small_square: __Format__ : singles, double élimination (<#{stagelist[tournoi['game']]['ruleset']}>)\n\n"
                "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
 
