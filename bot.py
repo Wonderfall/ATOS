@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.19"
+version                             = "4.20"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
