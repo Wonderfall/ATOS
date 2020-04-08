@@ -119,7 +119,10 @@ desync_text=f"""
 :two: **Résoudre une desync, les 2 joueurs : **
 :white_small_square: Peuvent avoir recours à une __personne de tierce partie__ pour déterminer le fautif.
 :white_small_square: S'assurent qu'ils ont bien procédé à __l'ECB fix__ tel que décrit dans le tutoriel FR.
-:white_small_square: Vérifient qu'ils n'ont pas activé le support de la carte SD pour le Netplay *(off par défaut)*.
+:white_small_square: Vérifient depuis la fenêtre netplay que leur carte SD virtuelle a un hash MD5 égal à :
+```
+9b1bf61cf106b70ecbc81c1e70aed0f7
+```
 :white_small_square: Doivent vérifier que leur __ISO possède un hash MD5 inclus__ dans la liste compatible :
 ```
 d18726e6dfdc8bdbdad540b561051087
@@ -129,7 +132,8 @@ d8560b021835c9234c28be7ff9bcaaeb
 9f677c78eacb7e9b8617ab358082be32
 1c4d6175e3cbb2614bd805d32aea7311
 ```
-*Clic droit sur \"Super Smash Bros Brawl\" > Onglet \"Info\" > Ligne \"MD5 Checksum\".*
+*ISO : clic droit sur \"Super Smash Bros Brawl\" > Onglet \"Info\" > Ligne \"MD5 Checksum\".
+SD : en haut à droite d'une fenêtre netplay, cliquer sur \"MD5 Check\" et choisir \"SD card\".*
 
 :three: **Si ces informations ne suffisent pas, contactez un TO.**
 """
