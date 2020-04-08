@@ -1304,7 +1304,7 @@ async def send_lag_text(message):
                     "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
                     "- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
                     ":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
-                    "- Le ping doit rester en-dessous de 40ms si possible, si ce n'est pas le cas : augmenter le buffer à 6 ou 8.\n"
+                    "- Le host peut augmenter le \"minimum buffer\" à 6 ou 8, voire 10 maximum s'il constate des lags.\n"
                     "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
                     ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
     except:
