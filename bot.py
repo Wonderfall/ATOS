@@ -881,6 +881,8 @@ async def score_match(message):
             if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
             if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
 
+        og_score = score
+
         if winner == participants[player2]["challonge"]:
             score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
 
@@ -895,7 +897,7 @@ async def score_match(message):
         gaming_channel = discord.utils.get(message.guild.text_channels, name=str(match[0]["suggested_play_order"]))
 
         if gaming_channel != None:
-            await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[message.author.id]['display_name']}** gagne **{score}** !\n"
+            await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[message.author.id]['display_name']}** gagne **{og_score}** !\n"
                                       f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
