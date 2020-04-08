@@ -427,6 +427,11 @@ async def inscrire(member):
         with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
         await update_annonce()
 
+        try:
+            await member.send(f"Tu t'es inscrit(e) avec succès pour le tournoi **{tournoi['name']}**.")
+        except:
+            pass
+
     elif (member.id not in waiting_list) and (len(participants) >= tournoi['limite']):
 
         try:
@@ -441,6 +446,11 @@ async def inscrire(member):
 
         with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
         await update_waiting_list()
+
+        try:
+            await member.send(f"Dû au manque de place, tu es ajouté(e) à la liste d'attente pour le tournoi **{tournoi['name']}**. Tu seras prévenu(e) si une place se libère !")
+        except:
+            pass
 
 
 ### Mettre à jour la liste d'attente
@@ -489,18 +499,33 @@ async def desinscrire(member):
 
             try:
                 next_waiting_player = next(iter(waiting_list))
+
             except StopIteration:
                 pass
+
             else:
                 participants[next_waiting_player] = waiting_list[next_waiting_player]
                 participants[next_waiting_player]["checked_in"] = False
                 participants[next_waiting_player]["challonge"] = challonge.participants.create(tournoi["id"], participants[next_waiting_player]["display_name"])['id']
+
                 del waiting_list[next_waiting_player]
                 with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
+
                 await update_waiting_list()
 
+                try:
+                    await member.guild.get_member(next_waiting_player).send(f"Bonne nouvelle, une place s'est libérée ! Tu es inscrit(e) pour le tournoi **{tournoi['name']}**.")
+                except:
+                    pass
+
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+
             await update_annonce()
+
+            try:
+                await member.send(f"Tu es désinscrit(e) du tournoi **{tournoi['name']}**. À une prochaine fois peut-être !")
+            except:
+                pass
 
     elif member.id in waiting_list:
         del waiting_list[member.id]
@@ -551,11 +576,20 @@ async def rappel_check_in():
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
+    guild = bot.get_guild(id=guild_id)
+
     rappel_msg = ""
 
     for inscrit in participants:
+
         if participants[inscrit]["checked_in"] == False:
             rappel_msg += f"- <@{inscrit}>\n"
+
+            if tournoi["fin_check-in"] - datetime.datetime.now() < datetime.timedelta(minutes=10):
+                try:
+                    await guild.get_member(inscrit).send(f"Attention ! Il ne te reste plus qu'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
+                except:
+                    pass
 
     if rappel_msg != "":
         await bot.get_channel(check_in_channel_id).send(f":clock1: **Rappel de check-in !**\n{rappel_msg}\n"
