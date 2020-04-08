@@ -6,6 +6,7 @@ system:
 paths:
   tournoi: data/tournoi.json
   participants: data/participants.json
+  waiting_list: data/waiting_list.json
   stream: data/stream.json
   stagelist: data/stagelist.yml
 
