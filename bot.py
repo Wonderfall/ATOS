@@ -12,6 +12,7 @@ version                             = "4.19"
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
 participants_path                   = config["paths"]["participants"]
+waiting_list_path                   = config["paths"]["waiting_list"]
 stream_path                         = config["paths"]["stream"]
 stagelist_path                      = config["paths"]["stagelist"]
 
@@ -300,6 +301,7 @@ async def setup_tournament(message):
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
+    with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump([], f, indent=4)
 
     await annonce_inscription()
@@ -407,17 +409,10 @@ async def annonce_inscription():
 async def inscrire(member):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    if len(participants) >= tournoi['limite']:
-        try:
-            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-            await inscription.remove_reaction("✅", member)
-        except:
-            pass
-        return
-
-    if member.id not in participants:
+    if (member.id not in participants) and (len(participants) < tournoi['limite']):
 
         participants[member.id] = {
             "display_name" : member.display_name,
@@ -432,12 +427,45 @@ async def inscrire(member):
         with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
         await update_annonce()
 
+    elif (member.id not in waiting_list) and (len(participants) >= tournoi['limite']):
+
+        try:
+            tournoi['waiting_list_id']
+        except KeyError:
+            inscriptions_channel = bot.get_channel(inscriptions_channel_id)
+            waiting_list_msg = await inscriptions_channel.send(":hourglass: __Liste d'attente__ :\n")
+            tournoi['waiting_list_id'] = waiting_list_msg.id
+            with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+
+        waiting_list[member.id] = { "display_name" : member.display_name }
+
+        with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
+        await update_waiting_list()
+
+
+### Mettre à jour la liste d'attente
+@bot.event
+async def update_waiting_list():
+
+    with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    old_waiting_list = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["waiting_list_id"])
+
+    new_waiting_list = ":hourglass: __Liste d'attente__ :\n"
+
+    for joueur in waiting_list:
+        new_waiting_list += f":white_small_square: {waiting_list[joueur]['display_name']}\n"
+
+    await old_waiting_list.edit(content=new_waiting_list)
+
 
 ### Désinscription
 @bot.event
 async def desinscrire(member):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if member.id in participants:
@@ -450,16 +478,34 @@ async def desinscrire(member):
                 pass
 
         if datetime.datetime.now() < tournoi["fin_check-in"]:
+
             try:
                 inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
                 await inscription.remove_reaction("✅", member)
             except:
                 pass
 
-        if tournoi["statut"] == "pending":
             del participants[member.id]
+
+            try:
+                next_waiting_player = next(iter(waiting_list))
+            except StopIteration:
+                pass
+            else:
+                participants[next_waiting_player] = waiting_list[next_waiting_player]
+                participants[next_waiting_player]["checked_in"] = False
+                participants[next_waiting_player]["challonge"] = challonge.participants.create(tournoi["id"], participants[next_waiting_player]["display_name"])['id']
+                del waiting_list[next_waiting_player]
+                with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
+                await update_waiting_list()
+
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await update_annonce()
+
+    elif member.id in waiting_list:
+        del waiting_list[member.id]
+        with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
+        await update_waiting_list()
 
 
 ### Mettre à jour l'annonce d'inscription
@@ -653,6 +699,7 @@ async def check_tournament_state():
                 pass
 
         with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
+        with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
         with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
         with open(stream_path, 'w') as f: json.dump([], f, indent=4)
 
@@ -703,7 +750,7 @@ async def add_inscrit(message):
         with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-        if (datetime.datetime.now() > tournoi["fin_check-in"]) or (len(participants) >= tournoi['limite']):
+        if datetime.datetime.now() > tournoi["fin_check-in"]:
             await message.add_reaction("🚫")
             return
 

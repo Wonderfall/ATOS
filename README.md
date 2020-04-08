@@ -11,6 +11,7 @@ It stands for *Automated Tournament Organizer for Smash*, or more precisely *Aut
 ### What does it do?
 - Registration
 - Check-in
+- Waiting list
 - Match queue
 - Unique channel for each set
 - Stream queue
