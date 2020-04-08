@@ -483,6 +483,7 @@ async def desinscrire(member):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if member.id in participants:
+
         challonge.participants.destroy(tournoi["id"], participants[member.id]['challonge'])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
@@ -532,9 +533,16 @@ async def desinscrire(member):
                 pass
 
     elif member.id in waiting_list:
+
         del waiting_list[member.id]
         with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
+
         await update_waiting_list()
+
+        try:
+            await member.send(f"Tu as été retiré(e) de la liste d'attente pour le tournoi **{tournoi['name']}**.")
+        except:
+            pass
 
 
 ### Mettre à jour l'annonce d'inscription
@@ -613,6 +621,9 @@ async def end_check_in():
     except:
         pass
 
+    annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+    await annonce.clear_reaction("✅")
+
     for inscrit in list(participants):
         if participants[inscrit]["checked_in"] == False:
             challonge.participants.destroy(tournoi["id"], participants[inscrit]['challonge'])
@@ -626,9 +637,6 @@ async def end_check_in():
 
     with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
     await update_annonce()
-
-    annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-    await annonce.clear_reaction("✅")
 
     await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé.** Les personnes n'ayant pas check-in ont été retirées du bracket. Contactez les TOs en cas de besoin.")
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs en cas de besoin.")
