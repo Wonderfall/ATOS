@@ -884,7 +884,7 @@ async def score_match(message):
 
         debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
 
-        if (int(score[0]) < aimed_score) or (int(score[2]) not in looser_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
+        if (int(score[0]) != aimed_score) or (int(score[2]) not in looser_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
             await message.add_reaction("⚠️")
             await message.channel.send(f"<@{message.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
             return
