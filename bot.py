@@ -867,7 +867,7 @@ async def score_match(message):
         return
 
     try:
-        score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
+        score = og_score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
 
     except:
         await message.add_reaction("⚠️")
@@ -892,8 +892,6 @@ async def score_match(message):
         for joueur in participants:
             if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
             if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
-
-        og_score = score
 
         if winner == participants[player2]["challonge"]:
             score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
