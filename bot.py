@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "4.20"
+version                             = "4.21"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -661,9 +661,9 @@ async def check_in(message):
             await message.author.remove_roles(message.guild.get_role(challenger_id))
             del participants[message.author.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+            await message.add_reaction("✅")
             inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
             await inscription.remove_reaction("✅", message.author)
-            await message.add_reaction("✅")
 
         else:
             return
@@ -832,8 +832,6 @@ async def self_dq(message):
         if datetime.datetime.now() < tournoi["fin_check-in"]:
             inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
             await inscription.remove_reaction("✅", message.author)
-
-        if tournoi["statut"] == "pending":
             del participants[message.author.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await update_annonce()
