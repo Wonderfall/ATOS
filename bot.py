@@ -415,7 +415,7 @@ async def start_tournament(message):
 
     await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
-    scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, replace_existing=True)
+    scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, start_date=tournoi["début_tournoi"], replace_existing=True)
 
 
 ### Terminer un tournoi
