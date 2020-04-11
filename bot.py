@@ -1,4 +1,4 @@
-import discord, random, logging, os, json, re, challonge, dateutil.parser, datetime, asyncio, yaml
+import discord, random, logging, os, json, re, challonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 
@@ -7,7 +7,7 @@ with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Version
-version                             = "5.0-WIP"
+version                             = "5.0"
 
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
@@ -15,6 +15,7 @@ participants_path                   = config["paths"]["participants"]
 waiting_list_path                   = config["paths"]["waiting_list"]
 stream_path                         = config["paths"]["stream"]
 stagelist_path                      = config["paths"]["stagelist"]
+auto_mode_path                      = config["paths"]["auto_mode"]
 
 ### Locale
 language                            = config["system"]["language"]
@@ -229,6 +230,7 @@ async def on_ready():
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
     await bot.change_presence(activity=discord.Game(version)) # As of April 2020, CustomActivity is not supported for bots
+    scheduler.add_job(auto_mode, 'interval', id='auto_mode', minutes=10, replace_existing=True)
     await reload_tournament()
 
 
@@ -253,55 +255,30 @@ async def on_member_join(member):
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
 @bot.event
-async def get_tournament(url):
+async def init_tournament(url_or_id):
 
-    if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(url):
-        try:
-            bracket = challonge.tournaments.show(url.replace("https://challonge.com/", ""))
-        except:
-            return
-    else:
+    try:
+        infos = challonge.tournaments.show(url_or_id)
+    except:
         return
 
     tournoi = {
-        "name": bracket["name"],
-        "game": bracket["game_name"].title(), # Non-recognized games are lowercase for Challonge
-        "url": url,
-        "id": bracket["id"],
-        "limite": bracket["signup_cap"],
-        "statut": bracket["state"],
-        "début_tournoi": dateutil.parser.parse(str(bracket["start_at"])).replace(tzinfo=None),
-        "début_check-in": dateutil.parser.parse(str(bracket["start_at"])).replace(tzinfo=None) - datetime.timedelta(hours = 1),
-        "fin_check-in": dateutil.parser.parse(str(bracket["start_at"])).replace(tzinfo=None) - datetime.timedelta(minutes = 10),
+        "name": infos["name"],
+        "game": infos["game_name"].title(), # Non-recognized games are lowercase for Challonge
+        "url": infos["full_challonge_url"],
+        "id": infos["id"],
+        "limite": infos["signup_cap"],
+        "statut": infos["state"],
+        "début_tournoi": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None),
+        "début_check-in": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None) - datetime.timedelta(hours = 1),
+        "fin_check-in": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None) - datetime.timedelta(minutes = 10),
         "on_stream": None,
         "stream": ["N/A", "N/A"],
         "warned": [],
         "timeout": []
     }
 
-    return tournoi
-
-
-### Ajouter un tournoi
-@bot.event
-async def setup_tournament(message):
-
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
-
-    url = message.content.replace("!setup ", "")
-    tournoi = await get_tournament(url)
-
-    if tournoi == None:
-        await message.add_reaction("⚠️")
-        return
-
-    elif datetime.datetime.now() > tournoi["début_tournoi"]:
-        await message.add_reaction("🕐")
-        return
-
-    elif tournoi['game'] not in stagelist:
-        await message.add_reaction("❔")
-        return
+    if (datetime.datetime.now() > tournoi["début_tournoi"]) or (tournoi['game'] not in stagelist): return
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
@@ -312,12 +289,173 @@ async def setup_tournament(message):
 
     scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
     scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
-    scheduler.add_job(check_tournament_state, 'interval', id='check_tournament_state', minutes=2, replace_existing=True)
 
-    await message.add_reaction("✅")
     await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
 
     await purge_channels()
+
+
+### Ajouter un tournoi
+@bot.event
+async def setup_tournament(message):
+
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
+    url = message.content.replace("!setup ", "")
+
+    if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(url):
+        tournoi = await init_tournament(url.replace("https://challonge.com/", ""))
+    else:
+        await message.add_reaction("🔗")
+
+    if tournoi == None:
+        await message.add_reaction("⚠️")
+    else:
+        await message.add_reaction("✅")
+
+
+### AUTO-MODE : will take care of creating tournaments for you
+@bot.event
+async def auto_mode():
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(auto_mode_path, 'r+') as f: auto_mode = yaml.full_load(f)
+
+    #  Auto-mode won't run if at least one of these conditions is met :
+    #    - It's turned off in config.yml (default)
+    #    - A tournament is already initialized
+    #    - It's "night" time
+
+    if (config["system"]["auto_mode"] == False) or (tournoi != {}) or (not 10 < datetime.datetime.now().hour < 21): return
+
+    for tournament in auto_mode:
+
+        for day in auto_mode[tournament]["days"]:
+
+            try:
+                relative = dateutil.relativedelta.relativedelta(weekday = time.strptime(day, '%A').tm_wday) # It's a weekly
+            except TypeError:
+                relative = dateutil.relativedelta.relativedelta(day = day) # It's a monthly
+            except ValueError:
+                return # Neither?
+ 
+            next_date = (datetime.datetime.now().astimezone() + relative).replace(
+                hour = dateutil.parser.parse(auto_mode[tournament]["start"]).hour,
+                minute = dateutil.parser.parse(auto_mode[tournament]["start"]).minute
+            )
+
+            # If the tournament is supposed to be in less than 36 hours, let's go !
+            if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = 36):
+
+                new_tournament = challonge.tournaments.create(
+                    name = f"{tournament} #{auto_mode[tournament]['edition']}",
+                    url = f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{auto_mode[tournament]['edition']}",
+                    tournament_type = "double elimination",
+                    description = auto_mode[tournament]['description'],
+                    signup_cap = auto_mode[tournament]['capping'],
+                    game_name = auto_mode[tournament]['game'],
+                    start_at = next_date
+                )
+
+                auto_mode[tournament]["edition"] += 1
+                with open(auto_mode_path, 'w') as f: yaml.dump(auto_mode, f)
+
+                await init_tournament(new_tournament["id"])
+                return
+
+
+### Démarrer un tournoi
+@bot.event
+async def start_tournament(message):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    try:
+        if datetime.datetime.now() > tournoi["fin_check-in"]:
+            challonge.tournaments.start(tournoi["id"])
+            tournoi["statut"] = "underway"
+            with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+            await message.add_reaction("✅")
+        else:
+            await message.add_reaction("🕐")
+            return
+    except:
+        await message.add_reaction("⚠️")
+        return
+
+    await calculate_top8()
+
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
+
+    scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
+               f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
+               f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
+               f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
+               f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
+               f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.")
+
+    await bot.get_channel(scores_channel_id).send(scorann)
+
+    queue_annonce = ":information_source: Le lancement des sets est automatisé. **Veuillez suivre les consignes de ce channel**, que ce soit par le bot ou les TOs. Notez que tout passage on stream sera notifié à l'avance, ici et/ou par DM."
+
+    await bot.get_channel(queue_channel_id).send(queue_annonce)
+
+    tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n"
+                       f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
+                       f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{stagelist[tournoi['game']]['ruleset']}>.\n"
+                       f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
+                       f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
+                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
+                       f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**\n\n"
+                       f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
+
+    if tournoi["game"] == "Project+":
+        tournoi_annonce += f"\n\n{stagelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `!desync` pour résoudre la situation."
+
+    await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
+
+    scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, replace_existing=True)
+
+
+### Terminer un tournoi
+@bot.event
+async def end_tournament(message):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+
+    try:
+        if datetime.datetime.now() > tournoi["début_tournoi"]:
+            challonge.tournaments.finalize(tournoi["id"])
+            await message.add_reaction("✅")
+        else:
+            await message.add_reaction("🕐")
+            return
+    except:
+        await message.add_reaction("⚠️")
+        return
+
+    scheduler.remove_job('managing_sets')
+
+    await annonce_resultats()
+
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
+
+    guild = bot.get_guild(id=guild_id)
+    challenger = guild.get_role(challenger_id)
+
+    for inscrit in participants:
+        try:
+            await guild.get_member(inscrit).remove_roles(challenger)
+        except:
+            pass
+
+    with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
+    with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
+    with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
+    with open(stream_path, 'w') as f: json.dump([], f, indent=4)
+
+    await bot.change_presence(activity=discord.Game(version))
 
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
@@ -329,11 +467,8 @@ async def reload_tournament():
         await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
 
         # Relancer les tâches automatiques
-        scheduler.add_job(check_tournament_state, 'interval', id='check_tournament_state', minutes=2, replace_existing=True)
-
         if tournoi["statut"] == "underway":
-            scheduler.add_job(launch_matches, 'interval', id='launch_matches', minutes=1, replace_existing=True)
-            scheduler.add_job(rappel_matches, 'interval', id='rappel_matches', minutes=1, replace_existing=True)
+            scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, replace_existing=True)
 
         elif tournoi["statut"] == "pending":
             scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
@@ -671,87 +806,6 @@ async def check_in(message):
         await update_annonce()
 
 
-### Régulièrement executé
-@bot.event
-async def check_tournament_state():
-
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    bracket = challonge.tournaments.show(tournoi["id"])
-
-    ### Dès que le tournoi commence
-    if (tournoi["statut"] == "pending") and (bracket['state'] == "underway"):
-
-        await calculate_top8()
-
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
-        with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
-
-        await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
-
-        scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
-                   f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
-                   f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
-                   f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
-                   f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
-                   f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.")
-
-        await bot.get_channel(scores_channel_id).send(scorann)
-
-        queue_annonce = ":information_source: Le lancement des sets est automatisé. **Veuillez suivre les consignes de ce channel**, que ce soit par le bot ou les TOs. Notez que tout passage on stream sera notifié à l'avance, ici et/ou par DM."
-
-        await bot.get_channel(queue_channel_id).send(queue_annonce)
-
-        tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n"
-                           f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
-                           f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{stagelist[tournoi['game']]['ruleset']}>.\n"
-                           f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
-                           f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
-                           f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
-                           f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**\n\n"
-                           f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
-
-        if tournoi["game"] == "Project+":
-            tournoi_annonce += f"\n\n{stagelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `!desync` pour résoudre la situation."
-
-        await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
-
-        tournoi["statut"] = "underway"
-        with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-
-        scheduler.add_job(launch_matches, 'interval', id='launch_matches', minutes=1, replace_existing=True)
-        scheduler.add_job(rappel_matches, 'interval', id='rappel_matches', minutes=1, replace_existing=True)
-
-
-    ### Dès que le tournoi est terminé
-    elif bracket['state'] in ["complete", "ended"]:
-
-        scheduler.remove_job('launch_matches')
-        scheduler.remove_job('rappel_matches')
-
-        scheduler.remove_job('check_tournament_state')
-
-        await annonce_resultats()
-
-        await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
-
-        guild = bot.get_guild(id=guild_id)
-        challenger = guild.get_role(challenger_id)
-
-        for inscrit in participants:
-            try:
-                await guild.get_member(inscrit).remove_roles(challenger)
-            except:
-                pass
-
-        with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
-        with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
-        with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
-        with open(stream_path, 'w') as f: json.dump([], f, indent=4)
-
-        await bot.change_presence(activity=discord.Game(version))
-
-
 ### Nettoyer les channels liés aux tournois
 @bot.event
 async def purge_channels():
@@ -842,6 +896,15 @@ async def self_dq(message):
         await message.add_reaction("⚠️")
 
 
+### Gestion tournoi
+@bot.event
+async def managing_sets():
+    guild = bot.get_guild(id=guild_id)
+    bracket = challonge.matches.index(tournoi["id"], state="open")
+    await launch_matches(guild, bracket)
+    await rappel_matches(guild, bracket)
+
+
 ### Gestion des scores
 @bot.event
 async def score_match(message):
@@ -918,15 +981,11 @@ async def score_match(message):
 
 ### Lancer matchs ouverts
 @bot.event
-async def launch_matches():
-
-    guild = bot.get_guild(id=guild_id)
+async def launch_matches(guild, bracket):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    bracket = challonge.matches.index(tournoi["id"], state="open")
 
     sets = ""
 
@@ -1184,15 +1243,11 @@ async def calculate_top8():
 
 ### Lancer un rappel de matchs
 @bot.event
-async def rappel_matches():
-
-    guild = bot.get_guild(id=guild_id)
+async def rappel_matches(bracket, guild):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    bracket = challonge.matches.index(tournoi["id"], state="open")
 
     for match in bracket:
 
@@ -1472,9 +1527,11 @@ async def on_message(message):
     elif message.content == '!stages': await get_stagelist(message)
 
     # Commandes admin
-    elif ((message.content in ["!purge", "!stream"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
+    elif ((message.content in ["!purge", "!stream", "!start", "!end"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
         if message.content == '!purge': await purge_channels()
         elif message.content == '!stream': await list_stream(message)
+        elif message.content == '!start': await start_tournament(message)
+        elif message.content == '!end': await end_tournament(message)
         elif message.content.startswith('!setup '): await setup_tournament(message)
         elif message.content.startswith('!rm '): await remove_inscrit(message)
         elif message.content.startswith('!add '): await add_inscrit(message)
