@@ -2,7 +2,7 @@ import discord, random, logging, os, json, re, challonge, dateutil.parser, dateu
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
-from utils import dateconverter, dateparser, int_keys
+from utils.json_hooks import dateconverter, dateparser, int_keys
 
 with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
