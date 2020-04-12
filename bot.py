@@ -4,7 +4,7 @@ from babel.dates import format_date, format_time
 from discord.ext import commands
 from utils.json_hooks import dateconverter, dateparser, int_keys
 
-with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
+with open('config/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
 if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
 
@@ -275,7 +275,7 @@ async def init_tournament(url_or_id):
 
 ### Ajouter un tournoi
 @bot.command(name='setup')
-@commands.check(is_to)
+@commands.has_role(to_id)
 async def setup_tournament(ctx, arg):
 
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
@@ -341,8 +341,8 @@ async def auto_mode():
 
 
 ### Démarrer un tournoi
-@bot.command(name ='start')
-@commands.check(is_to)
+@bot.command(name='start')
+@commands.has_role(to_id)
 async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
@@ -398,8 +398,8 @@ async def start_tournament(ctx):
 
 
 ### Terminer un tournoi
-@bot.command(name ='end')
-@commands.check(is_to)
+@bot.command(name='end')
+@commands.has_role(to_id)
 async def end_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -747,6 +747,21 @@ async def end_check_in():
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs en cas de besoin.")
 
 
+### Can check-in?
+def can_check_in(ctx):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+
+    conditions = all([
+        challenger_id in [y.id for y in ctx.author.roles],
+        tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
+        ctx.channel.id == check_in_channel_id,
+        ctx.author.id in participants
+    ])
+
+    return conditions
+
+
 ### Prise en charge du check-in et check-out
 @bot.command(name='in')
 @commands.check(can_check_in)
@@ -827,7 +842,7 @@ async def flipcoin(ctx):
 
 ### Ajout manuel
 @bot.command(name='add')
-@commands.check(is_to)
+@commands.has_role(to_id)
 async def add_inscrit(ctx):
 
     try:
@@ -847,8 +862,8 @@ async def add_inscrit(ctx):
 
 
 ### Suppression/DQ manuel
-@bot.command(name ='rm')
-@commands.check(is_to)
+@bot.command(name='rm')
+@commands.has_role(to_id)
 async def remove_inscrit(ctx):
     for member in ctx.message.mentions: await desinscrire(member)
     await ctx.message.add_reaction("✅")
@@ -1039,7 +1054,7 @@ async def launch_matches(guild, bracket):
 
 ### Ajout ID et MDP d'arène de stream
 @bot.command(name='setstream')
-@commands.check(is_to)
+@commands.has_role(to_id)
 async def setup_stream(ctx, *args):
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -1060,7 +1075,7 @@ async def setup_stream(ctx, *args):
 
 ### Ajouter un set dans la stream queue
 @bot.command(name='addstream')
-@commands.check(is_to)
+@commands.has_role(to_id)
 async def add_stream(ctx, *, args: int):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -1085,7 +1100,7 @@ async def add_stream(ctx, *, args: int):
 
 ### Enlever un set de la stream queue
 @bot.command(name='rmstream')
-@commands.check(is_to)
+@commands.has_role(to_id)
 async def remove_stream(ctx, *args):
 
     if args == "queue": # Reset la stream queue
@@ -1110,7 +1125,7 @@ async def remove_stream(ctx, *args):
 
 ### Infos stream
 @bot.command(name='stream')
-@commands.check(is_to)
+@commands.has_role(to_id)
 async def list_stream(ctx):
 
     try:
@@ -1361,31 +1376,6 @@ async def send_lag_text(message):
     await ctx.send(msg)
 
 
-### Si Tournament Organizer (TO)
-def is_to(ctx):
-    return True if to_id in [y.id for y in ctx.author.roles] else False
-
-### Can check-in?
-def can_check_in(ctx):
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-
-    conditions = all([
-        challenger_id in [y.id for y in ctx.author.roles],
-        tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
-        ctx.channel.id == check_in_channel_id,
-        ctx.author.id in participants
-    ])
-
-    return conditions
-
-### On command error : invoker has not permissions
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CheckFailure):
-        await ctx.message.add_reaction("🚫")
-
-
 ### Annoncer les résultats
 async def annonce_resultats():
 
@@ -1523,6 +1513,12 @@ async def send_desync_help(ctx):
 async def on_message(message):
     if message.author.id == bot.user.id: return # Ignore bot own messages
     # Note : we use commands prefix now!
+
+### On command error : invoker has not enough permissions
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, (commands.CheckFailure, commands.MissingRole)):
+        await ctx.message.add_reaction("🚫")
 
 
 #### Scheduler
