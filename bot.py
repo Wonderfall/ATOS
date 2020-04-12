@@ -1,6 +1,7 @@
 import discord, random, logging, os, json, re, challonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
+from discord.ext import commands
 
 with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
@@ -141,7 +142,8 @@ SD : en haut à droite d'une fenêtre netplay, cliquer sur \"MD5 Check\" et choi
 
 
 ### Init things
-bot = discord.Client()
+bot = commands.Bot(command_prefix=commands.when_mentioned_or('!')) # Set prefix for commands
+bot.remove_command('help') # Remove default help command
 challonge.set_credentials(challonge_user, challonge_api_key)
 scheduler = AsyncIOScheduler()
 
@@ -230,7 +232,7 @@ async def on_ready():
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
     await bot.change_presence(activity=discord.Game(version)) # As of April 2020, CustomActivity is not supported for bots
-    scheduler.add_job(auto_mode, 'interval', id='auto_mode', minutes=10, replace_existing=True)
+    #scheduler.add_job(auto_mode, 'interval', id='auto_mode', minutes=10, replace_existing=True)
     await reload_tournament()
 
 
@@ -254,7 +256,6 @@ async def on_member_join(member):
 
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
-@bot.event
 async def init_tournament(url_or_id):
 
     try:
@@ -296,26 +297,25 @@ async def init_tournament(url_or_id):
 
 
 ### Ajouter un tournoi
-@bot.event
-async def setup_tournament(message):
+@bot.command(name='setup')
+@commands.check(is_to)
+async def setup_tournament(ctx, arg):
 
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
-    url = message.content.replace("!setup ", "")
-
-    if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(url):
-        tournoi = await init_tournament(url.replace("https://challonge.com/", ""))
+    if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(arg):
+        tournoi = await init_tournament(arg.replace("https://challonge.com/", ""))
     else:
-        await message.add_reaction("🔗")
+        await ctx.message.add_reaction("🔗")
 
     if tournoi == None:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
     else:
-        await message.add_reaction("✅")
+        await ctx.message.add_reaction("✅")
 
 
 ### AUTO-MODE : will take care of creating tournaments for you
-@bot.event
+@scheduler.scheduled_job('interval', id='auto_mode', minutes=10)
 async def auto_mode():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(auto_mode_path, 'r+') as f: auto_mode = yaml.full_load(f)
@@ -364,8 +364,9 @@ async def auto_mode():
 
 
 ### Démarrer un tournoi
-@bot.event
-async def start_tournament(message):
+@bot.command(name ='start')
+@commands.check(is_to)
+async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
@@ -373,12 +374,12 @@ async def start_tournament(message):
             challonge.tournaments.start(tournoi["id"])
             tournoi["statut"] = "underway"
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-            await message.add_reaction("✅")
+            await ctx.message.add_reaction("✅")
         else:
-            await message.add_reaction("🕐")
+            await ctx.message.add_reaction("🕐")
             return
     except:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
         return
 
     await calculate_top8()
@@ -388,16 +389,17 @@ async def start_tournament(message):
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
 
-    scorann = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
-               f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
-               f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
-               f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
-               f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
-               f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.")
+    score_annonce = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
+                     f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
+                     f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
+                     f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
+                     f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
+                     f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.")
 
-    await bot.get_channel(scores_channel_id).send(scorann)
+    await bot.get_channel(scores_channel_id).send(score_annonce)
 
-    queue_annonce = ":information_source: Le lancement des sets est automatisé. **Veuillez suivre les consignes de ce channel**, que ce soit par le bot ou les TOs. Notez que tout passage on stream sera notifié à l'avance, ici et/ou par DM."
+    queue_annonce = (":information_source: Le lancement des sets est automatisé. **Veuillez suivre les consignes de ce channel**, que ce soit par le bot ou les TOs. "
+                     "Tout passage on stream sera notifié à l'avance.")
 
     await bot.get_channel(queue_channel_id).send(queue_annonce)
 
@@ -419,20 +421,21 @@ async def start_tournament(message):
 
 
 ### Terminer un tournoi
-@bot.event
-async def end_tournament(message):
+@bot.command(name ='end')
+@commands.check(is_to)
+async def end_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     try:
         if datetime.datetime.now() > tournoi["début_tournoi"]:
             challonge.tournaments.finalize(tournoi["id"])
-            await message.add_reaction("✅")
+            await ctx.message.add_reaction("✅")
         else:
-            await message.add_reaction("🕐")
+            await ctx.message.add_reaction("🕐")
             return
     except:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
         return
 
     scheduler.remove_job('managing_sets')
@@ -441,12 +444,11 @@ async def end_tournament(message):
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
 
-    guild = bot.get_guild(id=guild_id)
-    challenger = guild.get_role(challenger_id)
+    challenger = ctx.guild.get_role(challenger_id)
 
     for inscrit in participants:
         try:
-            await guild.get_member(inscrit).remove_roles(challenger)
+            await ctx.guild.get_member(inscrit).remove_roles(challenger)
         except:
             pass
 
@@ -459,7 +461,6 @@ async def end_tournament(message):
 
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
-@bot.event
 async def reload_tournament():
 
     try:
@@ -515,7 +516,6 @@ async def reload_tournament():
 
 
 ### Annonce l'inscription
-@bot.event
 async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
@@ -544,7 +544,6 @@ async def annonce_inscription():
 
 
 ### Inscription
-@bot.event
 async def inscrire(member):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -593,7 +592,6 @@ async def inscrire(member):
 
 
 ### Mettre à jour la liste d'attente
-@bot.event
 async def update_waiting_list():
 
     with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
@@ -610,7 +608,6 @@ async def update_waiting_list():
 
 
 ### Désinscription
-@bot.event
 async def desinscrire(member):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -681,7 +678,6 @@ async def desinscrire(member):
 
 
 ### Mettre à jour l'annonce d'inscription
-@bot.event
 async def update_annonce():
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -693,7 +689,6 @@ async def update_annonce():
 
 
 ### Début du check-in
-@bot.event
 async def start_check_in():
 
     guild = bot.get_guild(id=guild_id)
@@ -717,7 +712,6 @@ async def start_check_in():
 
 
 ### Rappel de check-in
-@bot.event
 async def rappel_check_in():
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -744,7 +738,6 @@ async def rappel_check_in():
 
 
 ### Fin du check-in
-@bot.event
 async def end_check_in():
 
     guild = bot.get_guild(id=guild_id)
@@ -778,36 +771,50 @@ async def end_check_in():
 
 
 ### Prise en charge du check-in et check-out
-@bot.event
-async def check_in(message):
+@bot.command(name='in')
+@commands.check(can_check_in)
+async def check_in(ctx):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    if (message.author.id in participants) and (tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"]):
+    if participants[ctx.author.id]["checked_in"] == False:
+        participants[ctx.author.id]["checked_in"] = True
+        with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+        await ctx.message.add_reaction("✅")
 
-        if message.content == "!in":
-            participants[message.author.id]["checked_in"] = True
-            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-            await message.add_reaction("✅")
+    else:
+        await ctx.message.add_reaction("☑️")
 
-        elif message.content == "!out":
-            challonge.participants.destroy(tournoi["id"], participants[message.author.id]['challonge'])
-            await message.author.remove_roles(message.guild.get_role(challenger_id))
-            del participants[message.author.id]
-            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-            await message.add_reaction("✅")
-            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-            await inscription.remove_reaction("✅", message.author)
+    await update_annonce()
 
-        else:
-            return
 
-        await update_annonce()
+### Prise en charge du check-in et check-out
+@bot.command(name='out')
+@commands.check(can_check_in)
+async def check_out(ctx):
+
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    challonge.participants.destroy(tournoi["id"], participants[ctx.author.id]['challonge'])
+    await ctx.author.remove_roles(ctx.guild.get_role(challenger_id))
+
+    del participants[ctx.author.id]
+    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+
+    await ctx.message.add_reaction("✅")
+
+    try:
+        inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+        await inscription.remove_reaction("✅", ctx.author)
+    except:
+        pass
+
+    await update_annonce()
 
 
 ### Nettoyer les channels liés aux tournois
-@bot.event
 async def purge_channels():
     guild = bot.get_guild(id=guild_id)
 
@@ -826,78 +833,79 @@ async def purge_channels():
 
 
 ### Affiche le bracket en cours
-@bot.event
-async def post_bracket(message):
+@bot.command(name='bracket')
+async def post_bracket(ctx):
     try:
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        await message.channel.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
+        await ctx.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
     except:
-        await message.channel.send(":warning: Il n'y a pas de tournoi prévu à l'heure actuelle.")
+        await ctx.send(":warning: Il n'y a pas de tournoi prévu à l'heure actuelle.")
 
 
 ### Pile/face basique
-@bot.event
-async def flipcoin(message):
-    if message.content == "!flip":
-        await message.channel.send(f"<@{message.author.id}> {random.choice(['Tu commences à faire les bans.', 'Ton adversaire commence à faire les bans.'])}")
+@bot.command(name='flip', aliases=['flipcoin', 'coinflip', 'coin'])
+async def flipcoin(ctx):
+    await ctx.send(f"<@{ctx.author.id}> {random.choice(['Tu commences à faire les bans.', 'Ton adversaire commence à faire les bans.'])}")
 
 
 ### Ajout manuel
-@bot.event
-async def add_inscrit(message):
+@bot.command(name='add')
+@commands.check(is_to)
+async def add_inscrit(ctx):
 
     try:
         with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
         if datetime.datetime.now() > tournoi["fin_check-in"]:
-            await message.add_reaction("🚫")
+            await ctx.message.add_reaction("🚫")
             return
 
     except:
         await message.add_reaction("⚠️")
         return
 
-    for member in message.mentions: await inscrire(member)
-    await message.add_reaction("✅")
+    for member in ctx.message.mentions: await inscrire(member)
+    await ctx.message.add_reaction("✅")
 
 
 ### Suppression/DQ manuel
-@bot.event
-async def remove_inscrit(message):
-    for member in message.mentions: await desinscrire(member)
-    await message.add_reaction("✅")
+@bot.command(name ='rm')
+@commands.check(is_to)
+async def remove_inscrit(ctx):
+    for member in ctx.message.mentions: await desinscrire(member)
+    await ctx.message.add_reaction("✅")
 
 
 ### Se DQ soi-même
-@bot.event
-async def self_dq(message):
+@bot.command(name='dq')
+async def self_dq(ctx):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    if message.author.id in participants:
+    if ctx.author.id in participants:
 
-        challonge.participants.destroy(tournoi["id"], participants[message.author.id]['challonge'])
+        challonge.participants.destroy(tournoi["id"], participants[ctx.author.id]['challonge'])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
-            await message.author.remove_roles(message.guild.get_role(challenger_id))
+            await ctx.author.remove_roles(ctx.guild.get_role(challenger_id))
 
         if datetime.datetime.now() < tournoi["fin_check-in"]:
             inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-            await inscription.remove_reaction("✅", message.author)
-            del participants[message.author.id]
+            await inscription.remove_reaction("✅", ctx.author)
+            del participants[ctx.author.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
             await update_annonce()
 
-        await message.add_reaction("✅")
+        await ctx.message.add_reaction("✅")
 
     else:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
 
 
-### Gestion tournoi
-@bot.event
+### Managing sets during tournament : launch & remind
+### Goal : get the bracket only once to limit API calls
 async def managing_sets():
     guild = bot.get_guild(id=guild_id)
     bracket = challonge.matches.index(tournoi["id"], state="open")
@@ -906,8 +914,11 @@ async def managing_sets():
 
 
 ### Gestion des scores
-@bot.event
-async def score_match(message):
+@bot.command(name='win')
+@commands.has_role(challenger_id)
+async def score_match(ctx, arg):
+
+    if ctx.channel.id != scores_channel_id: return
 
     try:
         with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -916,23 +927,23 @@ async def score_match(message):
 
         if tournoi["statut"] != "underway": return
 
-        winner = participants[message.author.id]["challonge"] # Le gagnant est celui qui poste
+        winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
         match = challonge.matches.index(tournoi['id'], state="open", participant_id=winner)
 
         if match[0]["underway_at"] == None:
-            await message.channel.send(f"<@{message.author.id}> Huh, le set pour lequel tu as donné le score n'a **pas encore commencé** !")
+            await ctx.send(f"<@{ctx.author.id}> Huh, le set pour lequel tu as donné le score n'a **pas encore commencé** !")
             return
 
     except:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
         return
 
     try:
-        score = re.search(r'([0-9]+) *\- *([0-9]+)', message.content).group().replace(" ", "")
+        score = re.search(r'([0-9]+) *\- *([0-9]+)', arg).group().replace(" ", "")
 
     except:
-        await message.add_reaction("⚠️")
-        await message.channel.send(f"<@{message.author.id}> **Ton score ne possède pas le bon format** *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
+        await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> **Ton score ne possède pas le bon format** *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
         return
 
     else:
@@ -946,8 +957,8 @@ async def score_match(message):
         debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
 
         if (int(score[0]) != aimed_score) or (int(score[2]) not in looser_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
-            await message.add_reaction("⚠️")
-            await message.channel.send(f"<@{message.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
+            await ctx.message.add_reaction("⚠️")
+            await ctx.send(f"<@{ctx.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
             return
 
         for joueur in participants:
@@ -961,16 +972,16 @@ async def score_match(message):
 
     try:
         challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
-        await message.add_reaction("✅")
+        await ctx.message.add_reaction("✅")
 
     except:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
 
     else:
-        gaming_channel = discord.utils.get(message.guild.text_channels, name=str(match[0]["suggested_play_order"]))
+        gaming_channel = discord.utils.get(ctx.guild.text_channels, name=str(match[0]["suggested_play_order"]))
 
         if gaming_channel != None:
-            await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[message.author.id]['display_name']}** gagne **{og_score}** !\n"
+            await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[ctx.author.id]['display_name']}** gagne **{og_score}** !\n"
                                       f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
@@ -980,7 +991,6 @@ async def score_match(message):
 
 
 ### Lancer matchs ouverts
-@bot.event
 async def launch_matches(guild, bracket):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -1051,78 +1061,80 @@ async def launch_matches(guild, bracket):
 
 
 ### Ajout ID et MDP d'arène de stream
-@bot.event
-async def setup_stream(message):
+@bot.command(name='setstream')
+@commands.check(is_to)
+async def setup_stream(ctx, *args):
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    arene = message.content.replace("!setstream ", "").split()
 
-    if tournoi['game'] == 'Super Smash Bros. Ultimate' and len(arene) == 2:
+    if tournoi['game'] == 'Super Smash Bros. Ultimate' and len(args) == 2:
         tournoi["stream"] = arene
 
-    elif tournoi['game'] == 'Project+' and len(arene) == 1:
+    elif tournoi['game'] == 'Project+' and len(args) == 1:
         tournoi["stream"] = arene
 
     else:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
         return
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-    await message.add_reaction("✅")
+    await ctx.message.add_reaction("✅")
 
 
 ### Ajouter un set dans la stream queue
-@bot.event
-async def add_stream(message):
+@bot.command(name='addstream')
+@commands.check(is_to)
+async def add_stream(ctx, *, args: int):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
-        to_add = list(map(int, message.content.replace("!addstream ", "").split()))
         bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
 
     except:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
         return
 
-    for order in to_add:
+    for order in args:
         for match in bracket:
             if (match["suggested_play_order"] == order) and (match["underway_at"] == None) and (order not in stream):
                 stream.append(order)
                 break
 
     with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
-    await message.add_reaction("✅")
+    await ctx.message.add_reaction("✅")
 
 
 ### Enlever un set de la stream queue
-@bot.event
-async def remove_stream(message):
+@bot.command(name='rmstream')
+@commands.check(is_to)
+async def remove_stream(ctx, *args):
 
-    if message.content == "!rmstream queue": # Reset la stream queue
+    if args == "queue": # Reset la stream queue
         with open(stream_path, 'w') as f: json.dump([], f, indent=4)
-        await message.add_reaction("✅")
+        await ctx.message.add_reaction("✅")
 
-    elif message.content == "!rmstream now": # Reset le set on stream
+    elif args == "now": # Reset le set on stream
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         tournoi["on_stream"] = None
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-        await message.add_reaction("✅")
+        await ctx.message.add_reaction("✅")
 
     else:
         try:
             with open(stream_path, 'r+') as f: stream = json.load(f)
-            for order in list(map(int, message.content.replace("!rmstream ", "").split())): stream.remove(order)
+            for order in args: stream.remove(order)
             with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
-            await message.add_reaction("✅")
+            await ctx.message.add_reaction("✅")
         except:
-            await message.add_reaction("⚠️")
+            await ctx.message.add_reaction("⚠️")
 
 
 ### Infos stream
-@bot.event
-async def list_stream(message):
+@bot.command(name='stream')
+@commands.check(is_to)
+async def list_stream(ctx):
 
     try:
         with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -1130,7 +1142,7 @@ async def list_stream(message):
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
     except:
-        await message.add_reaction("⚠️")
+        await ctx.message.add_reaction("⚠️")
         return
 
     msg = f":information_source: Arène de stream :\n{get_access_stream()}\n"
@@ -1179,11 +1191,10 @@ async def list_stream(message):
     else:
         msg += ":play_pause: Il n'y a aucun set prévu pour passer on stream prochainement."
 
-    await message.channel.send(msg)
+    await ctx.send(msg)
 
 
 ### Appeler les joueurs on stream
-@bot.event
 async def call_stream():
 
     guild = bot.get_guild(id=guild_id)
@@ -1224,7 +1235,6 @@ async def call_stream():
 
 
 ### Calculer les rounds à partir desquels un set est top 8 (bracket D.E.)
-@bot.event
 async def calculate_top8():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
@@ -1242,7 +1252,6 @@ async def calculate_top8():
 
 
 ### Lancer un rappel de matchs
-@bot.event
 async def rappel_matches(bracket, guild):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -1329,8 +1338,8 @@ async def rappel_matches(bracket, guild):
 
 
 ### Obtenir stagelist
-@bot.event
-async def get_stagelist(message):
+@bot.command(name='stages', aliases=['stage', 'stagelist', 'ban', 'bans', 'map', 'maps'])
+async def get_stagelist(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
@@ -1342,14 +1351,15 @@ async def get_stagelist(message):
             msg += ":white_small_square: __Counterpicks__ :\n"
             for stage in stagelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
 
-        await message.channel.send(msg)
+        await ctx.send(msg)
 
     except:
-        await message.channel.send(":warning: Aucun tournoi n'est en cours, je ne peux pas fournir de stagelist pour un jeu inconnu.")
+        await ctx.send(":warning: Aucun tournoi n'est en cours, je ne peux pas fournir de stagelist pour un jeu inconnu.")
 
 
 ### Lag
-@bot.event
+@bot.command(name='lag')
+@commands.has_role(challenger_id)
 async def send_lag_text(message):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
@@ -1371,23 +1381,35 @@ async def send_lag_text(message):
     except:
         pass
 
-    await message.channel.send(msg)
+    await ctx.send(msg)
 
 
-### Si administrateur
+### Si Tournament Organizer (TO)
+def is_to(ctx):
+    return True if to_id in [y.id for y in ctx.author.roles] else False
+
+### Can check-in?
+def can_check_in(ctx):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+
+    conditions = all([
+        challenger_id in [y.id for y in ctx.author.roles],
+        tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
+        ctx.channel.id == check_in_channel_id,
+        ctx.author.id in participants
+    ])
+
+    return True if conditions else False
+
+### On command error : invoker has not permissions
 @bot.event
-async def author_is_admin(message):
-
-    if to_id in [y.id for y in message.author.roles]:
-        return True
-
-    else:
-        await message.add_reaction("🚫")
-        return False
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await ctx.message.add_reaction("🚫")
 
 
 ### Annoncer les résultats
-@bot.event
 async def annonce_resultats():
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -1428,7 +1450,6 @@ async def annonce_resultats():
 
 
 ### Ajouter un rôle
-@bot.event
 async def attribution_role(event):
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
@@ -1454,7 +1475,6 @@ async def attribution_role(event):
 
 
 ### Enlever un rôle
-@bot.event
 async def retirer_role(event):
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
@@ -1511,38 +1531,25 @@ async def on_raw_reaction_remove(event):
     elif (event.channel_id == roles_channel_id): await retirer_role(event)
 
 
-### À chaque message
+### Help message
+@bot.command(name='help', aliases=['info', 'version'])
+async def send_help(ctx):
+    await ctx.send(help_text)
+
+### Desync message
+@bot.command(name='desync')
+async def send_desync_help(ctx):
+    await ctx.send(desync_text)
+
+### On each message
 @bot.event
 async def on_message(message):
-
-    if message.author.id == bot.user.id: return
-    elif message.channel.id == check_in_channel_id: await check_in(message)
-    elif message.content == '!flip': await flipcoin(message)
-    elif (message.channel.id == scores_channel_id) and (message.content.startswith("!win ")): await score_match(message)
-    elif message.content == '!bracket': await post_bracket(message)
-    elif message.content == '!dq': await self_dq(message)
-    elif message.content == '!help': await message.channel.send(help_text)
-    elif message.content == '!desync': await message.channel.send(desync_text)
-    elif message.content == '!lag': await send_lag_text(message)
-    elif message.content == '!stages': await get_stagelist(message)
-
-    # Commandes admin
-    elif ((message.content in ["!purge", "!stream", "!start", "!end"] or message.content.startswith(('!setup ', '!rm ', '!add ', '!setstream ', '!addstream ', '!rmstream ')))) and (await author_is_admin(message)):
-        if message.content == '!purge': await purge_channels()
-        elif message.content == '!stream': await list_stream(message)
-        elif message.content == '!start': await start_tournament(message)
-        elif message.content == '!end': await end_tournament(message)
-        elif message.content.startswith('!setup '): await setup_tournament(message)
-        elif message.content.startswith('!rm '): await remove_inscrit(message)
-        elif message.content.startswith('!add '): await add_inscrit(message)
-        elif message.content.startswith('!setstream '): await setup_stream(message)
-        elif message.content.startswith('!addstream '): await add_stream(message)
-        elif message.content.startswith('!rmstream '): await remove_stream(message)
-
+    if message.author.id == bot.user.id: return # Ignore bot own messages
+    # Note : we use commands prefix now!
 
 
 #### Scheduler
 scheduler.start()
 
 #### Lancement du bot
-bot.run(bot_secret)
+bot.run(bot_secret, bot = True, reconnect = True)
