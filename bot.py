@@ -1068,10 +1068,10 @@ async def setup_stream(ctx, *args):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if tournoi['game'] == 'Super Smash Bros. Ultimate' and len(args) == 2:
-        tournoi["stream"] = arene
+        tournoi["stream"] = args
 
     elif tournoi['game'] == 'Project+' and len(args) == 1:
-        tournoi["stream"] = arene
+        tournoi["stream"] = args
 
     else:
         await ctx.message.add_reaction("⚠️")
