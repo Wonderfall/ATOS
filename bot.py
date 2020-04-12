@@ -1400,7 +1400,7 @@ def can_check_in(ctx):
         ctx.author.id in participants
     ])
 
-    return True if conditions else False
+    return conditions
 
 ### On command error : invoker has not permissions
 @bot.event
