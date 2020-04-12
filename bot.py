@@ -2,6 +2,7 @@ import discord, random, logging, os, json, re, challonge, dateutil.parser, dateu
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
+from utils import dateconverter, dateparser, int_keys
 
 with open('data/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
@@ -147,30 +148,6 @@ bot.remove_command('help') # Remove default help command
 challonge.set_credentials(challonge_user, challonge_api_key)
 scheduler = AsyncIOScheduler()
 
-
-### De-serialize & re-serialize datetime objects for JSON storage
-def dateconverter(o):
-    if isinstance(o, datetime.datetime):
-        return o.__str__()
-
-def dateparser(dct):
-    for k, v in dct.items():
-        try:
-            dct[k] = datetime.datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-        except:
-            pass
-    return dct
-
-### Get int keys !
-def int_keys(ordered_pairs):
-    result = {}
-    for key, value in ordered_pairs:
-        try:
-            key = int(key)
-        except ValueError:
-            pass
-        result[key] = value
-    return result
 
 ### Determine whether a match is top 8 or not
 def is_top8(match_round):
