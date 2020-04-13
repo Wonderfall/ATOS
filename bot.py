@@ -272,8 +272,6 @@ async def init_tournament(url_or_id):
 
     await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
 
-    await purge_channels()
-
 
 ### Ajouter un tournoi
 @bot.command(name='setup')
@@ -281,11 +279,15 @@ async def init_tournament(url_or_id):
 async def setup_tournament(ctx, arg):
 
     if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(arg):
-        tournoi = await init_tournament(arg.replace("https://challonge.com/", ""))
+        await init_tournament(arg.replace("https://challonge.com/", ""))
     else:
         await ctx.message.add_reaction("🔗")
 
-    if tournoi == None:
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    try:
+        tournoi["début_tournoi"]
+    except:
         await ctx.message.add_reaction("⚠️")
     else:
         await ctx.message.add_reaction("✅")
@@ -519,6 +521,8 @@ async def annonce_inscription():
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! <@&{stagelist[tournoi['game']]['role']}>\n"
                                                    f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
+
+    await purge_channels()
 
 
 ### Inscription
