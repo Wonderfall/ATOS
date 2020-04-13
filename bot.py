@@ -143,7 +143,7 @@ SD : en haut à droite d'une fenêtre netplay, cliquer sur \"MD5 Check\" et choi
 
 
 ### Init things
-bot = commands.Bot(command_prefix=commands.when_mentioned_or(config["discord"]["prefix"])) # Set prefix for commands
+bot = commands.Bot(command_prefix=commands.when_mentioned_or('!')) # Set prefix for commands
 bot.remove_command('help') # Remove default help command
 challonge.set_credentials(challonge_user, challonge_api_key)
 scheduler = AsyncIOScheduler()
@@ -256,6 +256,7 @@ async def init_tournament(url_or_id):
         "timeout": []
     }
 
+    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
     if (datetime.datetime.now() > tournoi["début_tournoi"]) or (tournoi['game'] not in stagelist): return
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
