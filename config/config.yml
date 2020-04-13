@@ -9,8 +9,8 @@ paths:
   participants: data/participants.json
   waiting_list: data/waiting_list.json
   stream: data/stream.json
-  stagelist: data/stagelist.yml
-  auto_mode: data/auto_mode.yml
+  stagelist: config/stagelist.yml
+  auto_mode: config/auto_mode.yml
 
 discord:
   secret:
