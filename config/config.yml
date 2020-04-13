@@ -1,6 +1,7 @@
-# version 4.x
+# version 5.x
 system:
   debug: True
+  auto_mode: False
   language: fr_FR
 
 paths:
@@ -8,11 +9,13 @@ paths:
   participants: data/participants.json
   waiting_list: data/waiting_list.json
   stream: data/stream.json
-  stagelist: data/stagelist.yml
+  stagelist: config/stagelist.yml
+  auto_mode: config/auto_mode.yml
 
 discord:
   secret:
   guild:
+  prefix:
   channels:
     blabla:
     annonce:
