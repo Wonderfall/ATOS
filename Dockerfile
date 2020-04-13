@@ -12,7 +12,9 @@ RUN apk -U upgrade \
  && apk del build-base && rm -rf /var/cache/apk/*
 
 COPY docker/run.sh /usr/local/bin/run.sh
-COPY bot.py /bot/bot.py
+
+COPY bot.py .
+COPY utils ./utils
 
 RUN chmod +x /usr/local/bin/run.sh
 
