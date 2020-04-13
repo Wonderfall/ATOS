@@ -986,6 +986,36 @@ async def score_match(ctx, arg):
             await call_stream()
 
 
+### Forfeit
+@bot.command(name='forfeit', aliases=['ff', 'loose'])
+@commands.has_role(challenger_id)
+async def forfeit_match(ctx):
+
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+
+    try:
+        looser = participants[ctx.author.id]["challonge"]
+        match = challonge.matches.index(tournoi['id'], state="open", participant_id=looser)
+
+        for joueur in participants:
+            if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
+            if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+
+        if looser == participants[player2]["challonge"]:
+            winner = participants[player1]["challonge"]
+            score = "1-0"
+        else:
+            winner = participants[player2]["challonge"]
+            score = "0-1"
+
+        challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
+        await ctx.message.add_reaction("✅")
+
+    except:
+        await ctx.message.add_reaction("⚠️")
+
+
 ### Lancer matchs ouverts
 async def launch_matches(guild, bracket):
 
