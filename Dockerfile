@@ -4,6 +4,8 @@ ENV UID=1000 GID=1000
 
 WORKDIR /bot
 
+COPY requirements.txt .
+
 RUN apk -U upgrade \
  && apk add python3 python3-dev build-base su-exec tini tzdata \
  && pip3 install --no-cache -r requirements.txt \
