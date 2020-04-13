@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM python:3.8-alpine
 
 ENV UID=1000 GID=1000
 
@@ -7,7 +7,7 @@ WORKDIR /bot
 COPY requirements.txt .
 
 RUN apk -U upgrade \
- && apk add python3 python3-dev build-base su-exec tini tzdata \
+ && apk add build-base su-exec tini tzdata \
  && pip3 install --no-cache -r requirements.txt \
  && apk del build-base && rm -rf /var/cache/apk/*
 
