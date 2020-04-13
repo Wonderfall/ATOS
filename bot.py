@@ -1507,12 +1507,6 @@ async def send_help(ctx):
 async def send_desync_help(ctx):
     await ctx.send(desync_text)
 
-### On each message
-@bot.event
-async def on_message(message):
-    if message.author.id == bot.user.id: return # Ignore bot own messages
-    # Note : we use commands prefix now!
-
 ### On command error : invoker has not enough permissions
 @bot.event
 async def on_command_error(ctx, error):
