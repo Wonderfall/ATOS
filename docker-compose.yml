@@ -6,7 +6,7 @@ services:
     container_name: atos
     restart: unless-stopped
     environment:
-      - TZ = Europe/Berlin
+      - TZ=Europe/Berlin
     volumes:
       - ./config:/bot/config
       - ./data:/bot/data
