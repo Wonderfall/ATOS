@@ -15,6 +15,7 @@ paths:
 discord:
   secret:
   guild:
+  prefix:
   channels:
     blabla:
     annonce:
