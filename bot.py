@@ -1383,7 +1383,11 @@ async def send_lag_text(ctx):
 ### Calculate recommended minimum buffer
 @bot.command(name='buffer')
 async def calculate_buffer(ctx, arg: int):
-    await ctx.send(f"<@{ctx.author.id}> Minimum buffer (host) suggéré pour Dolphin Netplay : **{arg // 8 + (arg % 8 > 0)}**.\n"
+
+    theoretical_buffer = arg // 8 + (arg % 8 > 0)
+    suggested_buffer = theoretical_buffer if theoretical_buffer >= 4 else 4
+
+    await ctx.send(f"<@{ctx.author.id}> Minimum buffer (host) suggéré pour Dolphin Netplay : **{suggested_buffer}**.\n"
                    f"*Si du lag persiste, il y a un problème de performance : montez le buffer tant que nécessaire.*")
 
 
