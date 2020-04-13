@@ -750,15 +750,18 @@ async def end_check_in():
 def can_check_in(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-
-    conditions = all([
-        challenger_id in [y.id for y in ctx.author.roles],
-        tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
-        ctx.channel.id == check_in_channel_id,
-        ctx.author.id in participants
-    ])
-
-    return conditions
+    
+    try:
+        conditions = all([
+            challenger_id in [y.id for y in ctx.author.roles],
+            tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
+            ctx.channel.id == check_in_channel_id,
+            ctx.author.id in participants
+        ])
+    except:
+        return False
+    else:
+        return conditions
 
 
 ### Prise en charge du check-in et check-out
