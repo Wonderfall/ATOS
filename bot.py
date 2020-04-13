@@ -144,7 +144,7 @@ SD : en haut à droite d'une fenêtre netplay, cliquer sur \"MD5 Check\" et choi
 
 ### Init things
 bot = commands.Bot(command_prefix=commands.when_mentioned_or(config["discord"]["prefix"])) # Set prefix for commands
-bot.remove_command('help') # Remove default help command
+bot.remove_command('help') # Remove default help command to set our own
 challonge.set_credentials(challonge_user, challonge_api_key)
 scheduler = AsyncIOScheduler()
 
@@ -278,8 +278,6 @@ async def init_tournament(url_or_id):
 @bot.command(name='setup')
 @commands.has_role(to_id)
 async def setup_tournament(ctx, arg):
-
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
     if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(arg):
         tournoi = await init_tournament(arg.replace("https://challonge.com/", ""))
@@ -832,7 +830,7 @@ async def post_bracket(ctx):
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         await ctx.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
     except:
-        await ctx.send(":warning: Il n'y a pas de tournoi prévu à l'heure actuelle.")
+        await ctx.send("Désolé, il n'y a pas de tournoi prévu à l'heure actuelle.")
 
 
 ### Pile/face basique
@@ -1077,7 +1075,7 @@ async def setup_stream(ctx, *args):
 ### Ajouter un set dans la stream queue
 @bot.command(name='addstream')
 @commands.has_role(to_id)
-async def add_stream(ctx, *, args: int):
+async def add_stream(ctx, *args):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -1104,11 +1102,11 @@ async def add_stream(ctx, *, args: int):
 @commands.has_role(to_id)
 async def remove_stream(ctx, *args):
 
-    if args == "queue": # Reset la stream queue
+    if args[0] == "queue": # Reset la stream queue
         with open(stream_path, 'w') as f: json.dump([], f, indent=4)
         await ctx.message.add_reaction("✅")
 
-    elif args == "now": # Reset le set on stream
+    elif args[0] == "now": # Reset le set on stream
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         tournoi["on_stream"] = None
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
@@ -1245,7 +1243,7 @@ async def calculate_top8():
 
 
 ### Lancer un rappel de matchs
-async def rappel_matches(bracket, guild):
+async def rappel_matches(guild, bracket):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -1353,7 +1351,7 @@ async def get_stagelist(ctx):
 ### Lag
 @bot.command(name='lag')
 @commands.has_role(challenger_id)
-async def send_lag_text(message):
+async def send_lag_text(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
