@@ -1035,6 +1035,9 @@ async def launch_matches(guild, bracket):
                                           f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
 
+                if tournoi["game"] == "Project+":
+                    gaming_channel_annonce += f"{stagelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer ping`.\n"
+
                 if is_top8(match["round"]):
                     gaming_channel_annonce += ":fire: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
 
