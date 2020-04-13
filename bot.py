@@ -326,6 +326,7 @@ async def auto_mode():
                     name = f"{tournament} #{auto_mode[tournament]['edition']}",
                     url = f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{auto_mode[tournament]['edition']}",
                     tournament_type = "double elimination",
+                    show_rounds = True,
                     description = auto_mode[tournament]['description'],
                     signup_cap = auto_mode[tournament]['capping'],
                     game_name = auto_mode[tournament]['game'],
