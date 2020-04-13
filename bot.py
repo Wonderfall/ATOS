@@ -68,33 +68,34 @@ N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de pos
 
 Je te conseille de t'attribuer un rôle dans <#{roles_channel_id}> par la même occasion.
 
-Enfin, amuse-toi bien !
+Enfin, amuse-toi bien ! *Tu peux obtenir une liste de commandes avec la commande `{config['discord']['prefix']}help`.*
 """
 
 help_text=f"""
 :cd: **Commandes user :**
-:white_small_square: `!help` : c'est la commande que tu viens de rentrer.
-:white_small_square: `!bracket` : obtenir le lien du bracket en cours.
+:white_small_square: `{config['discord']['prefix']}help` : c'est la commande que tu viens de rentrer.
+:white_small_square: `{config['discord']['prefix']}bracket` : obtenir le lien du bracket en cours.
 
 :video_game: **Commandes joueur :**
-:white_small_square: `!dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
-:white_small_square: `!flip` : pile/face simple, fonctionne dans tous les channels.
-:white_small_square: `!win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
-:white_small_square: `!stages` : obtenir la stagelist légale actuelle.
-:white_small_square: `!lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
-:white_small_square: `!desync` : obtenir une notice d'aide en cas de desync sur Project+ - Dolphin Netplay.
+:white_small_square: `{config['discord']['prefix']}dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
+:white_small_square: `{config['discord']['prefix']}flip` : pile/face simple, fonctionne dans tous les channels.
+:white_small_square: `{config['discord']['prefix']}win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
+:white_small_square: `{config['discord']['prefix']}stages` : obtenir la stagelist légale actuelle.
+:white_small_square: `{config['discord']['prefix']}lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
+:white_small_square: `{config['discord']['prefix']}desync` : obtenir une notice d'aide en cas de desync sur Project+ - Dolphin Netplay.
+:white_small_square: `{config['discord']['prefix']}buffer` : calcule le minimum buffer optimal pour Dolphin Netplay *(paramètre : ping)*.
 
 :no_entry_sign: **Commandes administrateur :**
-:white_small_square: `!purge` : purifier les channels relatifs à un tournoi.
-:white_small_square: `!setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.
-:white_small_square: `!rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
-:white_small_square: `!add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
+:white_small_square: `{config['discord']['prefix']}purge` : purifier les channels relatifs à un tournoi.
+:white_small_square: `{config['discord']['prefix']}setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.
+:white_small_square: `{config['discord']['prefix']}rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
+:white_small_square: `{config['discord']['prefix']}add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
 
 :tv: **Commandes stream :**
-:white_small_square: `!stream` : obtenir toutes les informations relatives au stream (IDs, on stream, queue).
-:white_small_square: `!setstream` : mettre en place l'arène de stream *(2 paramètres : ID MDP)*.
-:white_small_square: `!addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
-:white_small_square: `!rmstream` : retirer un set de la stream queue *(paramètre : n° | queue | now)*.
+:white_small_square: `{config['discord']['prefix']}stream` : obtenir toutes les informations relatives au stream (IDs, on stream, queue).
+:white_small_square: `{config['discord']['prefix']}setstream` : mettre en place l'arène de stream *(2 paramètres : ID MDP)*.
+:white_small_square: `{config['discord']['prefix']}addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
+:white_small_square: `{config['discord']['prefix']}rmstream` : retirer un set de la stream queue *(paramètre : n° | queue | now)*.
 
 *Version {version}, made by Wonderfall with :heart:*
 """
@@ -1370,13 +1371,20 @@ async def send_lag_text(ctx):
                     "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
                     "- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
                     ":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
-                    "- Le host peut augmenter le \"minimum buffer\" à 6 ou 8, voire 10 maximum s'il constate des lags.\n"
+                    "- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `!buffer` en fournissant votre ping.\n"
                     "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
                     ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
     except:
         pass
 
     await ctx.send(msg)
+
+
+### Calculate recommended minimum buffer
+@bot.command(name='buffer')
+async def calculate_buffer(ctx, arg: int):
+    await ctx.send(f"<@{ctx.author.id}> Minimum buffer (host) suggéré pour Dolphin Netplay : **{arg // 8 + (arg % 8 > 0)}**.\n"
+                   f"*Si du lag persiste, il y a un problème de performance : montez le buffer tant que nécessaire.*")
 
 
 ### Annoncer les résultats
