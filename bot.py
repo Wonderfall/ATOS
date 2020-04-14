@@ -152,11 +152,7 @@ scheduler = AsyncIOScheduler()
 ### Determine whether a match is top 8 or not
 def is_top8(match_round):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    if (match_round >= tournoi["round_winner_top8"]) or (match_round <= tournoi["round_looser_top8"]):
-        return True
-    else:
-        return False
+    return (match_round >= tournoi["round_winner_top8"]) or (match_round <= tournoi["round_looser_top8"])
 
 ### Retourner nom du round
 def nom_round(match_round):
