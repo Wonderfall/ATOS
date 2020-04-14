@@ -2,196 +2,31 @@ import discord, random, logging, os, json, re, challonge, dateutil.parser, dateu
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
+
+# Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
 from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in
+from utils.rounds import is_top8, nom_round
+from utils.game_specs import get_access_stream
 
-with open('config/config.yml', 'r+') as f: config = yaml.safe_load(f)
+# Import configuration (variables only)
+from utils.config import *
 
-if config["system"]["debug"] == True: logging.basicConfig(level=logging.DEBUG)
+# Import raw texts (variables only)
+from utils.raw_texts import *
 
-#### Version
-version                             = "5.0"
+if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
-### File paths
-tournoi_path                        = config["paths"]["tournoi"]
-participants_path                   = config["paths"]["participants"]
-waiting_list_path                   = config["paths"]["waiting_list"]
-stream_path                         = config["paths"]["stream"]
-stagelist_path                      = config["paths"]["stagelist"]
-auto_mode_path                      = config["paths"]["auto_mode"]
-
-### Locale
-language                            = config["system"]["language"]
-
-#### Discord IDs
-guild_id                            = config["discord"]["guild"]
-
-### Server channels
-blabla_channel_id                   = config["discord"]["channels"]["blabla"]
-annonce_channel_id                  = config["discord"]["channels"]["annonce"]
-check_in_channel_id                 = config["discord"]["channels"]["check_in"]
-inscriptions_channel_id             = config["discord"]["channels"]["inscriptions"]
-scores_channel_id                   = config["discord"]["channels"]["scores"]
-stream_channel_id                   = config["discord"]["channels"]["stream"]
-queue_channel_id                    = config["discord"]["channels"]["queue"]
-tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
-resultats_channel_id                = config["discord"]["channels"]["resultats"]
-roles_channel_id                    = config["discord"]["channels"]["roles"]
-
-### Info, non-interactive channels
-deroulement_channel_id              = config["discord"]["channels"]["deroulement"]
-faq_channel_id                      = config["discord"]["channels"]["faq"]
-
-### Server categories
-tournoi_cat_id                      = config["discord"]["categories"]["tournoi"]
-arenes_cat_id                       = config["discord"]["categories"]["arenes"]
-
-### Role IDs
-challenger_id                       = config["discord"]["roles"]["challenger"]
-to_id                               = config["discord"]["roles"]["to"]
-
-### Custom emojis
-server_logo                         = config["discord"]["emojis"]["logo"]
-
-#### Challonge
-challonge_user                      = config["challonge"]["user"]
-
-### Tokens
-bot_secret                          = config["discord"]["secret"]
-challonge_api_key                   = config["challonge"]["api_key"]
-
-
-### Texts
-welcome_text=f"""
-Je t'invite à consulter le channel <#{deroulement_channel_id}>, et également <#{inscriptions_channel_id}> si tu souhaites t'inscrire à un tournoi.
-N'oublie pas de consulter les <#{annonce_channel_id}> régulièrement, et de poser tes questions aux TOs sur <#{faq_channel_id}>.
-
-Je te conseille de t'attribuer un rôle dans <#{roles_channel_id}> par la même occasion.
-
-Enfin, amuse-toi bien ! *Tu peux obtenir une liste de commandes avec la commande `{config['discord']['prefix']}help`.*
-"""
-
-help_text=f"""
-:cd: **Commandes user :**
-:white_small_square: `{config['discord']['prefix']}help` : c'est la commande que tu viens de rentrer.
-:white_small_square: `{config['discord']['prefix']}bracket` : obtenir le lien du bracket en cours.
-
-:video_game: **Commandes joueur :**
-:white_small_square: `{config['discord']['prefix']}dq` : se retirer du tournoi avant/après (DQ) que celui-ci ait commencé.
-:white_small_square: `{config['discord']['prefix']}flip` : pile/face simple, fonctionne dans tous les channels.
-:white_small_square: `{config['discord']['prefix']}win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
-:white_small_square: `{config['discord']['prefix']}stages` : obtenir la stagelist légale actuelle.
-:white_small_square: `{config['discord']['prefix']}lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
-:white_small_square: `{config['discord']['prefix']}desync` : obtenir une notice d'aide en cas de desync sur Project+ - Dolphin Netplay.
-:white_small_square: `{config['discord']['prefix']}buffer` : calcule le minimum buffer optimal pour Dolphin Netplay *(paramètre : ping)*.
-
-:no_entry_sign: **Commandes administrateur :**
-:white_small_square: `{config['discord']['prefix']}purge` : purifier les channels relatifs à un tournoi.
-:white_small_square: `{config['discord']['prefix']}setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.
-:white_small_square: `{config['discord']['prefix']}rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
-:white_small_square: `{config['discord']['prefix']}add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
-
-:tv: **Commandes stream :**
-:white_small_square: `{config['discord']['prefix']}stream` : obtenir toutes les informations relatives au stream (IDs, on stream, queue).
-:white_small_square: `{config['discord']['prefix']}setstream` : mettre en place l'arène de stream *(2 paramètres : ID MDP)*.
-:white_small_square: `{config['discord']['prefix']}addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
-:white_small_square: `{config['discord']['prefix']}rmstream` : retirer un set de la stream queue *(paramètre : n° | queue | now)*.
-
-*Version {version}, made by Wonderfall with :heart:*
-"""
-
-lag_text=f"""
-:satellite: **Un lag a été constaté**, les <@&{to_id}> sont contactés.
-
-:one: En attendant, chaque joueur peut :
-:white_small_square: Vérifier qu'aucune autre connexion locale ne pompe la connexion.
-:white_small_square: S'assurer que la connexion au réseau est, si possible, câblée.
-:white_small_square: S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).
-
-:two: Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit :
-:white_small_square: Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.
-:white_small_square: Décrire sa méthode de connexion actuelle *(Wi-Fi, Ethernet direct, CPL -> ADSL, FFTH, 4G...)*.
-
-:three: Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).
-"""
-
-desync_text=f"""
-:one: **Détecter une desync sur Project+ (Dolphin Netplay) :**
-:white_small_square: Une desync résulte dans des inputs transmis au mauvais moment (l'adversaire SD à répétition, etc.).
-:white_small_square: Si Dolphin affiche qu'une desync a été détectée, c'est probablement le cas.
-
-:two: **Résoudre une desync, les 2 joueurs : **
-:white_small_square: Peuvent avoir recours à une __personne de tierce partie__ pour déterminer le fautif.
-:white_small_square: S'assurent qu'ils ont bien procédé à __l'ECB fix__ tel que décrit dans le tutoriel FR.
-:white_small_square: Vérifient depuis la fenêtre netplay que leur carte SD virtuelle a un hash MD5 égal à :
-```
-9b1bf61cf106b70ecbc81c1e70aed0f7
-```
-:white_small_square: Doivent vérifier que leur __ISO possède un hash MD5 inclus__ dans la liste compatible :
-```
-d18726e6dfdc8bdbdad540b561051087
-d8560b021835c9234c28be7ff9bcaaeb
-5052e2e15f22772ab6ce4fd078221e96
-52ce7160ced2505ad5e397477d0ea4fe
-9f677c78eacb7e9b8617ab358082be32
-1c4d6175e3cbb2614bd805d32aea7311
-```
-*ISO : clic droit sur \"Super Smash Bros Brawl\" > Onglet \"Info\" > Ligne \"MD5 Checksum\".
-SD : en haut à droite d'une fenêtre netplay, cliquer sur \"MD5 Check\" et choisir \"SD card\".*
-
-:three: **Si ces informations ne suffisent pas, contactez un TO.**
-"""
-
+#### Infos
+version = "5.0"
+author = "Wonderfall"
+name = "A.T.O.S."
 
 ### Init things
-bot = commands.Bot(command_prefix=commands.when_mentioned_or(config["discord"]["prefix"])) # Set prefix for commands
+bot = commands.Bot(command_prefix=commands.when_mentioned_or(bot_prefix)) # Set prefix for commands
 bot.remove_command('help') # Remove default help command to set our own
 challonge.set_credentials(challonge_user, challonge_api_key)
 scheduler = AsyncIOScheduler()
-
-
-### Determine whether a match is top 8 or not
-def is_top8(match_round):
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    return (match_round >= tournoi["round_winner_top8"]) or (match_round <= tournoi["round_looser_top8"])
-
-### Retourner nom du round
-def nom_round(match_round):
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    max_round_winner = tournoi["round_winner_top8"] + 2
-    max_round_looser = tournoi["round_looser_top8"] - 3
-
-    if match_round > 0:
-        if match_round == max_round_winner:
-            return "GF"
-        elif match_round == max_round_winner - 1:
-            return "WF"
-        elif match_round == max_round_winner - 2:
-            return "WS"
-        elif match_round == max_round_winner - 3:
-            return "WQ"
-        else:
-            return f"WR{match_round}"
-
-    elif match_round < 0:
-        if match_round == max_round_looser:
-            return "LF"
-        elif match_round == max_round_looser + 1:
-            return "LS"
-        elif match_round == max_round_looser + 2:
-            return "LQ"
-        else:
-            return f"LR{-match_round}"
-
-### Accès stream
-def get_access_stream():
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    if tournoi['game'] == 'Project+':
-        return f":white_small_square: **Accès host Dolphin Netplay** : `{tournoi['stream'][0]}`"
-
-    elif tournoi['game'] == 'Super Smash Bros. Ultimate':
-        return f":white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`"
 
 
 #### Notifier de l'initialisation
@@ -293,18 +128,18 @@ async def setup_tournament(ctx, arg):
 @scheduler.scheduled_job('interval', id='auto_mode', minutes=10)
 async def auto_mode():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(auto_mode_path, 'r+') as f: auto_mode = yaml.full_load(f)
+    with open(auto_mode_path, 'r+') as f: tournaments = yaml.full_load(f)
 
     #  Auto-mode won't run if at least one of these conditions is met :
     #    - It's turned off in config.yml (default)
     #    - A tournament is already initialized
     #    - It's "night" time
 
-    if (config["system"]["auto_mode"] == False) or (tournoi != {}) or (not 10 < datetime.datetime.now().hour < 21): return
+    if (auto_mode == False) or (tournoi != {}) or (not 10 < datetime.datetime.now().hour < 21): return
 
-    for tournament in auto_mode:
+    for tournament in tournaments:
 
-        for day in auto_mode[tournament]["days"]:
+        for day in tournaments[tournament]["days"]:
 
             try:
                 relative = dateutil.relativedelta.relativedelta(weekday = time.strptime(day, '%A').tm_wday) # It's a weekly
@@ -314,26 +149,26 @@ async def auto_mode():
                 return # Neither?
  
             next_date = (datetime.datetime.now().astimezone() + relative).replace(
-                hour = dateutil.parser.parse(auto_mode[tournament]["start"]).hour,
-                minute = dateutil.parser.parse(auto_mode[tournament]["start"]).minute
+                hour = dateutil.parser.parse(tournaments[tournament]["start"]).hour,
+                minute = dateutil.parser.parse(tournaments[tournament]["start"]).minute
             )
 
             # If the tournament is supposed to be in less than 36 hours, let's go !
             if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = 36):
 
                 new_tournament = challonge.tournaments.create(
-                    name = f"{tournament} #{auto_mode[tournament]['edition']}",
-                    url = f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{auto_mode[tournament]['edition']}",
+                    name = f"{tournament} #{tournaments[tournament]['edition']}",
+                    url = f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
                     tournament_type = "double elimination",
                     show_rounds = True,
-                    description = auto_mode[tournament]['description'],
-                    signup_cap = auto_mode[tournament]['capping'],
-                    game_name = auto_mode[tournament]['game'],
+                    description = tournaments[tournament]['description'],
+                    signup_cap = tournaments[tournament]['capping'],
+                    game_name = tournaments[tournament]['game'],
                     start_at = next_date
                 )
 
-                auto_mode[tournament]["edition"] += 1
-                with open(auto_mode_path, 'w') as f: yaml.dump(auto_mode, f)
+                tournaments[tournament]["edition"] += 1
+                with open(auto_mode_path, 'w') as f: yaml.dump(tournaments, f)
 
                 await init_tournament(new_tournament["id"])
                 return
@@ -1519,7 +1354,7 @@ async def on_raw_reaction_remove(event):
 ### Help message
 @bot.command(name='help', aliases=['info', 'version'])
 async def send_help(ctx):
-    await ctx.send(help_text)
+    await ctx.send(f"{help_text}\n**{name} {version}** - *Made by {author} with* :heart:")
 
 ### Desync message
 @bot.command(name='desync')
