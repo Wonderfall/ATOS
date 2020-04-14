@@ -919,11 +919,18 @@ async def setup_stream(ctx, *args):
 ### Ajouter un set dans la stream queue
 @bot.command(name='addstream')
 @commands.has_role(to_id)
-@commands.check(tournament_is_underway)
-async def add_stream(ctx, *args):
+@commands.check(tournament_is_underway_or_pending)
+async def add_stream(ctx, *args: int):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    # Pre-add before the tournament goes underway - BE CAREFUL!
+    if tournoi["statut"] == "pending":
+        for arg in args: stream.append(arg)
+        with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
+        await ctx.message.add_reaction("☑️")
+        return
 
     try:
         bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
@@ -931,10 +938,10 @@ async def add_stream(ctx, *args):
         await ctx.message.add_reaction("⚠️")
         return
 
-    for order in args:
+    for arg in args:
         for match in bracket:
-            if (match["suggested_play_order"] == order) and (match["underway_at"] == None) and (order not in stream):
-                stream.append(order)
+            if (match["suggested_play_order"] == arg) and (match["underway_at"] == None) and (arg not in stream):
+                stream.append(arg)
                 break
 
     with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
@@ -944,27 +951,30 @@ async def add_stream(ctx, *args):
 ### Enlever un set de la stream queue
 @bot.command(name='rmstream')
 @commands.has_role(to_id)
-@commands.check(tournament_is_underway)
+@commands.check(tournament_is_underway_or_pending)
 async def remove_stream(ctx, *args):
 
     if args[0] == "queue": # Reset la stream queue
         with open(stream_path, 'w') as f: json.dump([], f, indent=4)
         await ctx.message.add_reaction("✅")
+        return
 
-    elif args[0] == "now": # Reset le set on stream
+    if args[0] == "now": # Reset le set on stream
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         tournoi["on_stream"] = None
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
         await ctx.message.add_reaction("✅")
+        return
 
+    with open(stream_path, 'r+') as f: stream = json.load(f)
+
+    try:
+        for arg in args: stream.remove(int(arg))
+    except (ValueError, TypeError):
+        await ctx.message.add_reaction("⚠️")
     else:
-        try:
-            with open(stream_path, 'r+') as f: stream = json.load(f)
-            for order in args: stream.remove(order)
-            with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
-            await ctx.message.add_reaction("✅")
-        except ValueError:
-            await ctx.message.add_reaction("⚠️")
+        with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
+        await ctx.message.add_reaction("✅")
 
 
 ### Infos stream
