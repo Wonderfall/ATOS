@@ -1,4 +1,4 @@
-from utils.config import *
+from utils.get_config import *
 
 ### Texts
 welcome_text=f"""
