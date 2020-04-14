@@ -193,6 +193,60 @@ def get_access_stream():
         return f":white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`"
 
 
+### Discord commands checks
+# Is tournament pending?
+def tournament_is_pending(ctx):
+    try:
+        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+        return tournoi["statut"] == "pending"
+    except (FileNotFoundError, TypeError, KeyError):
+        return False
+
+# Is tournament pending?
+def tournament_is_underway(ctx):
+    try:
+        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+        return tournoi["statut"] == "underway"
+    except (FileNotFoundError, TypeError, KeyError):
+        return False
+
+# Is tournament pending?
+def tournament_is_underway_or_pending(ctx):
+    try:
+        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+        return tournoi["statut"] in ["underway", "pending"]
+    except (FileNotFoundError, TypeError, KeyError):
+        return False
+
+# In channel?
+def in_channel(channel_id):
+    async def predicate(ctx):
+        if ctx.channel.id != channel_id:
+            await ctx.send(f"Cette commande fonctionne uniquement dans <#{channel_id}> !")
+            return False
+        else:
+            return True
+    return commands.check(predicate)
+
+# Can check-in?
+def can_check_in(ctx):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+
+    try:
+        conditions = all([
+            challenger_id in [y.id for y in ctx.author.roles],
+            tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
+            ctx.channel.id == check_in_channel_id,
+            ctx.author.id in participants
+        ])
+    except KeyError:
+        return False
+    else:
+        return conditions
+### End of commands checks
+
+
 #### Notifier de l'initialisation
 @bot.event
 async def on_ready():
@@ -341,20 +395,17 @@ async def auto_mode():
 ### Démarrer un tournoi
 @bot.command(name='start')
 @commands.has_role(to_id)
+@commands.check(tournament_is_pending)
 async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    try:
-        if datetime.datetime.now() > tournoi["fin_check-in"]:
-            challonge.tournaments.start(tournoi["id"])
-            tournoi["statut"] = "underway"
-            with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-            await ctx.message.add_reaction("✅")
-        else:
-            await ctx.message.add_reaction("🕐")
-            return
-    except:
-        await ctx.message.add_reaction("⚠️")
+    if datetime.datetime.now() > tournoi["fin_check-in"]:
+        challonge.tournaments.start(tournoi["id"])
+        tournoi["statut"] = "underway"
+        with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+        await ctx.message.add_reaction("✅")
+    else:
+        await ctx.message.add_reaction("🕐")
         return
 
     await calculate_top8()
@@ -398,19 +449,16 @@ async def start_tournament(ctx):
 ### Terminer un tournoi
 @bot.command(name='end')
 @commands.has_role(to_id)
+@commands.check(tournament_is_underway)
 async def end_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
-    try:
-        if datetime.datetime.now() > tournoi["début_tournoi"]:
-            challonge.tournaments.finalize(tournoi["id"])
-            await ctx.message.add_reaction("✅")
-        else:
-            await ctx.message.add_reaction("🕐")
-            return
-    except:
-        await ctx.message.add_reaction("⚠️")
+    if datetime.datetime.now() > tournoi["début_tournoi"]:
+        challonge.tournaments.finalize(tournoi["id"])
+        await ctx.message.add_reaction("✅")
+    else:
+        await ctx.message.add_reaction("🕐")
         return
 
     scheduler.remove_job('managing_sets')
@@ -744,24 +792,6 @@ async def end_check_in():
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs en cas de besoin.")
 
 
-### Can check-in?
-def can_check_in(ctx):
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    
-    try:
-        conditions = all([
-            challenger_id in [y.id for y in ctx.author.roles],
-            tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
-            ctx.channel.id == check_in_channel_id,
-            ctx.author.id in participants
-        ])
-    except KeyError:
-        return False
-    else:
-        return conditions
-
-
 ### Prise en charge du check-in et check-out
 @bot.command(name='in')
 @commands.check(can_check_in)
@@ -826,12 +856,10 @@ async def purge_channels():
 
 ### Affiche le bracket en cours
 @bot.command(name='bracket')
+@commands.check(tournament_is_underway_or_pending)
 async def post_bracket(ctx):
-    try:
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        await ctx.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
-    except KeyError:
-        await ctx.send("Désolé, il n'y a pas de tournoi prévu à l'heure actuelle.")
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    await ctx.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
 
 
 ### Pile/face basique
@@ -843,17 +871,14 @@ async def flipcoin(ctx):
 ### Ajout manuel
 @bot.command(name='add')
 @commands.has_role(to_id)
+@commands.check(tournament_is_pending)
 async def add_inscrit(ctx):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     
-    try:
-        if datetime.datetime.now() > tournoi["fin_check-in"]:
-            await ctx.message.add_reaction("🚫")
-            return
-    except KeyError:
-        await message.add_reaction("⚠️")
+    if datetime.datetime.now() > tournoi["fin_check-in"]:
+        await ctx.message.add_reaction("🕐")
         return
 
     for member in ctx.message.mentions: await inscrire(member)
@@ -863,6 +888,7 @@ async def add_inscrit(ctx):
 ### Suppression/DQ manuel
 @bot.command(name='rm')
 @commands.has_role(to_id)
+@commands.check(tournament_is_underway_or_pending)
 async def remove_inscrit(ctx):
     for member in ctx.message.mentions: await desinscrire(member)
     await ctx.message.add_reaction("✅")
@@ -870,6 +896,7 @@ async def remove_inscrit(ctx):
 
 ### Se DQ soi-même
 @bot.command(name='dq')
+@commands.check(tournament_is_underway_or_pending)
 async def self_dq(ctx):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -906,19 +933,18 @@ async def managing_sets():
 
 ### Gestion des scores
 @bot.command(name='win')
+@in_channel(scores_channel_id)
+@commands.check(tournament_is_underway)
 @commands.has_role(challenger_id)
 async def score_match(ctx, arg):
-
-    if ctx.channel.id != scores_channel_id: return
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stream_path, 'r+') as f: stream = json.load(f)
 
-    try:
-        if tournoi["statut"] != "underway": return
+    winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
 
-        winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
+    try:
         match = challonge.matches.index(tournoi['id'], state="open", participant_id=winner)
 
         if match[0]["underway_at"] == None:
@@ -981,6 +1007,7 @@ async def score_match(ctx, arg):
 
 ### Forfeit
 @bot.command(name='forfeit', aliases=['ff', 'loose'])
+@commands.check(tournament_is_underway)
 @commands.has_role(challenger_id)
 async def forfeit_match(ctx):
 
@@ -1088,6 +1115,7 @@ async def launch_matches(guild, bracket):
 ### Ajout ID et MDP d'arène de stream
 @bot.command(name='setstream')
 @commands.has_role(to_id)
+@commands.check(tournament_is_underway_or_pending)
 async def setup_stream(ctx, *args):
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -1109,6 +1137,7 @@ async def setup_stream(ctx, *args):
 ### Ajouter un set dans la stream queue
 @bot.command(name='addstream')
 @commands.has_role(to_id)
+@commands.check(tournament_is_underway)
 async def add_stream(ctx, *args):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -1133,6 +1162,7 @@ async def add_stream(ctx, *args):
 ### Enlever un set de la stream queue
 @bot.command(name='rmstream')
 @commands.has_role(to_id)
+@commands.check(tournament_is_underway)
 async def remove_stream(ctx, *args):
 
     if args[0] == "queue": # Reset la stream queue
@@ -1158,6 +1188,7 @@ async def remove_stream(ctx, *args):
 ### Infos stream
 @bot.command(name='stream')
 @commands.has_role(to_id)
+@commands.check(tournament_is_underway_or_pending)
 async def list_stream(ctx):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -1364,22 +1395,19 @@ async def rappel_matches(guild, bracket):
 
 ### Obtenir stagelist
 @bot.command(name='stages', aliases=['stage', 'stagelist', 'ban', 'bans', 'map', 'maps'])
+@commands.check(tournament_is_underway_or_pending)
 async def get_stagelist(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
-    try:
-        msg = f":map: **Stages légaux pour {tournoi['game']} :**\n:white_small_square: __Starters__ :\n"
-        for stage in stagelist[tournoi['game']]['starters']: msg += f"- {stage}\n"
+    msg = f":map: **Stages légaux pour {tournoi['game']} :**\n:white_small_square: __Starters__ :\n"
+    for stage in stagelist[tournoi['game']]['starters']: msg += f"- {stage}\n"
 
-        if 'counterpicks' in stagelist[tournoi['game']]:
-            msg += ":white_small_square: __Counterpicks__ :\n"
-            for stage in stagelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
+    if 'counterpicks' in stagelist[tournoi['game']]:
+        msg += ":white_small_square: __Counterpicks__ :\n"
+        for stage in stagelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
 
-        await ctx.send(msg)
-
-    except KeyError:
-        await ctx.send(":warning: Aucun tournoi n'est en cours, je ne peux pas fournir de stagelist pour un jeu inconnu.")
+    await ctx.send(msg)
 
 
 ### Lag
