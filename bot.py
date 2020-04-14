@@ -3,6 +3,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
 from utils.json_hooks import dateconverter, dateparser, int_keys
+from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in
 
 with open('config/config.yml', 'r+') as f: config = yaml.safe_load(f)
 
@@ -191,60 +192,6 @@ def get_access_stream():
 
     elif tournoi['game'] == 'Super Smash Bros. Ultimate':
         return f":white_small_square: **ID** : `{tournoi['stream'][0]}`\n:white_small_square: **MDP** : `{tournoi['stream'][1]}`"
-
-
-### Discord commands checks
-# Is tournament pending?
-def tournament_is_pending(ctx):
-    try:
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        return tournoi["statut"] == "pending"
-    except (FileNotFoundError, TypeError, KeyError):
-        return False
-
-# Is tournament pending?
-def tournament_is_underway(ctx):
-    try:
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        return tournoi["statut"] == "underway"
-    except (FileNotFoundError, TypeError, KeyError):
-        return False
-
-# Is tournament pending?
-def tournament_is_underway_or_pending(ctx):
-    try:
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        return tournoi["statut"] in ["underway", "pending"]
-    except (FileNotFoundError, TypeError, KeyError):
-        return False
-
-# In channel?
-def in_channel(channel_id):
-    async def predicate(ctx):
-        if ctx.channel.id != channel_id:
-            await ctx.send(f"Cette commande fonctionne uniquement dans <#{channel_id}> !")
-            return False
-        else:
-            return True
-    return commands.check(predicate)
-
-# Can check-in?
-def can_check_in(ctx):
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-
-    try:
-        conditions = all([
-            challenger_id in [y.id for y in ctx.author.roles],
-            tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"],
-            ctx.channel.id == check_in_channel_id,
-            ctx.author.id in participants
-        ])
-    except KeyError:
-        return False
-    else:
-        return conditions
-### End of commands checks
 
 
 #### Notifier de l'initialisation
