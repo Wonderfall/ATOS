@@ -225,7 +225,7 @@ async def start_tournament(ctx):
 
     await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
-    scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, start_date=tournoi["début_tournoi"], replace_existing=True)
+    scheduler.add_job(underway_tournament, 'interval', id='underway_tournament', minutes=1, start_date=tournoi["début_tournoi"], replace_existing=True)
 
 
 ### Terminer un tournoi
@@ -243,7 +243,7 @@ async def end_tournament(ctx):
         await ctx.message.add_reaction("🕐")
         return
 
-    scheduler.remove_job('managing_sets')
+    scheduler.remove_job('underway_tournament')
 
     await annonce_resultats()
 
@@ -277,7 +277,7 @@ async def reload_tournament():
 
     # Relancer les tâches automatiques
     if tournoi["statut"] == "underway":
-        scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, replace_existing=True)
+        scheduler.add_job(underway_tournament, 'interval', id='underway_tournament', minutes=1, replace_existing=True)
 
     elif tournoi["statut"] == "pending":
         scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
@@ -706,7 +706,7 @@ async def self_dq(ctx):
 
 ### Managing sets during tournament : launch & remind
 ### Goal : get the bracket only once to limit API calls
-async def managing_sets():
+async def underway_tournament():
     guild = bot.get_guild(id=guild_id)
     bracket = challonge.matches.index(tournoi["id"], state="open")
     await launch_matches(guild, bracket)
