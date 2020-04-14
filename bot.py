@@ -44,7 +44,6 @@ faq_channel_id                      = config["discord"]["channels"]["faq"]
 ### Server categories
 tournoi_cat_id                      = config["discord"]["categories"]["tournoi"]
 arenes_cat_id                       = config["discord"]["categories"]["arenes"]
-arenes                              = discord.Object(id=arenes_cat_id)
 
 ### Role IDs
 challenger_id                       = config["discord"]["roles"]["challenger"]
@@ -227,7 +226,7 @@ async def on_member_join(member):
 
     try:
         await member.send(f"Bienvenue sur le serveur **{member.guild.name}** ! {welcome_text}")
-    except:
+    except discord.Forbidden:
         await bot.get_channel(blabla_channel_id).send(f"{message} {welcome_text}")
     else:
         await bot.get_channel(blabla_channel_id).send(message) # Avoid sending welcome_text to the channel if possible
@@ -287,7 +286,7 @@ async def setup_tournament(ctx, arg):
 
     try:
         tournoi["début_tournoi"]
-    except:
+    except KeyError:
         await ctx.message.add_reaction("⚠️")
     else:
         await ctx.message.add_reaction("✅")
@@ -429,7 +428,7 @@ async def end_tournament(ctx):
     for inscrit in participants:
         try:
             await ctx.guild.get_member(inscrit).remove_roles(challenger)
-        except:
+        except discord.HTTPException:
             pass
 
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
@@ -442,57 +441,56 @@ async def end_tournament(ctx):
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
 async def reload_tournament():
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
-
-        # Relancer les tâches automatiques
-        if tournoi["statut"] == "underway":
-            scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, replace_existing=True)
-
-        elif tournoi["statut"] == "pending":
-            scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
-            scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
-
-            if tournoi["début_check-in"] < datetime.datetime.now() < tournoi["fin_check-in"]:
-                scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
-
-        print("Scheduled tasks for a tournament have been reloaded.")
-
-        # Prendre les inscriptions manquées
-        if datetime.datetime.now() < tournoi["fin_check-in"]:
-
-            annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-
-            with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-
-            # Avoir une liste des users ayant réagi
-            for reaction in annonce.reactions:
-                if str(reaction.emoji) == "✅":
-                    reactors = await reaction.users().flatten()
-                    break
-
-            # Inscrire ceux qui ne sont pas dans les participants
-            id_list = []
-
-            for reactor in reactors:
-                if reactor.id != bot.user.id:
-                    id_list.append(reactor.id)  # Récupérer une liste des IDs pour plus tard
-
-                    if reactor.id not in participants:
-                        await inscrire(reactor)
-
-            # Désinscrire ceux qui ne sont plus dans la liste des users ayant réagi
-            for inscrit in participants:
-                if inscrit not in id_list:
-                    await desinscrire(annonce.guild.get_member(inscrit))
-
-            print("Missed inscriptions were also taken care of.")
-
-    except:
+    except KeyError:
         print("No tournament had to be reloaded.")
-        pass
+        return
+
+    # Relancer les tâches automatiques
+    if tournoi["statut"] == "underway":
+        scheduler.add_job(managing_sets, 'interval', id='managing_sets', minutes=1, replace_existing=True)
+
+    elif tournoi["statut"] == "pending":
+        scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
+        scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
+
+        if tournoi["début_check-in"] < datetime.datetime.now() < tournoi["fin_check-in"]:
+            scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
+
+    print("Scheduled tasks for a tournament have been reloaded.")
+
+    # Prendre les inscriptions manquées
+    if datetime.datetime.now() < tournoi["fin_check-in"]:
+
+        annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+
+        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+
+        # Avoir une liste des users ayant réagi
+        for reaction in annonce.reactions:
+            if str(reaction.emoji) == "✅":
+                reactors = await reaction.users().flatten()
+                break
+
+        # Inscrire ceux qui ne sont pas dans les participants
+        id_list = []
+
+        for reactor in reactors:
+            if reactor.id != bot.user.id:
+                id_list.append(reactor.id)  # Récupérer une liste des IDs pour plus tard
+
+                if reactor.id not in participants:
+                    await inscrire(reactor)
+
+        # Désinscrire ceux qui ne sont plus dans la liste des users ayant réagi
+        for inscrit in participants:
+            if inscrit not in id_list:
+                await desinscrire(annonce.guild.get_member(inscrit))
+
+        print("Missed inscriptions were also taken care of.")
 
 
 ### Annonce l'inscription
@@ -549,7 +547,7 @@ async def inscrire(member):
 
         try:
             await member.send(f"Tu t'es inscrit(e) avec succès pour le tournoi **{tournoi['name']}**.")
-        except:
+        except discord.Forbidden:
             pass
 
     elif (member.id not in waiting_list) and (len(participants) >= tournoi['limite']):
@@ -569,7 +567,7 @@ async def inscrire(member):
 
         try:
             await member.send(f"Dû au manque de place, tu es ajouté(e) à la liste d'attente pour le tournoi **{tournoi['name']}**. Tu seras prévenu(e) si une place se libère !")
-        except:
+        except discord.Forbidden:
             pass
 
 
@@ -603,7 +601,7 @@ async def desinscrire(member):
         if datetime.datetime.now() > tournoi["début_check-in"]:
             try:
                 await member.remove_roles(member.guild.get_role(challenger_id))
-            except:
+            except discord.HTTPException:
                 pass
 
         if datetime.datetime.now() < tournoi["fin_check-in"]:
@@ -611,17 +609,15 @@ async def desinscrire(member):
             try:
                 inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
                 await inscription.remove_reaction("✅", member)
-            except:
+            except (discord.HTTPException, discord.NotFound):
                 pass
 
             del participants[member.id]
 
             try:
                 next_waiting_player = next(iter(waiting_list))
-
             except StopIteration:
                 pass
-
             else:
                 participants[next_waiting_player] = waiting_list[next_waiting_player]
                 participants[next_waiting_player]["checked_in"] = False
@@ -634,7 +630,7 @@ async def desinscrire(member):
 
                 try:
                     await member.guild.get_member(next_waiting_player).send(f"Bonne nouvelle, une place s'est libérée ! Tu es inscrit(e) pour le tournoi **{tournoi['name']}**.")
-                except:
+                except discord.Forbidden:
                     pass
 
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
@@ -643,7 +639,7 @@ async def desinscrire(member):
 
             try:
                 await member.send(f"Tu es désinscrit(e) du tournoi **{tournoi['name']}**. À une prochaine fois peut-être !")
-            except:
+            except discord.Forbidden:
                 pass
 
     elif member.id in waiting_list:
@@ -655,7 +651,7 @@ async def desinscrire(member):
 
         try:
             await member.send(f"Tu as été retiré(e) de la liste d'attente pour le tournoi **{tournoi['name']}**.")
-        except:
+        except discord.Forbidden:
             pass
 
 
@@ -711,7 +707,7 @@ async def rappel_check_in():
             if tournoi["fin_check-in"] - datetime.datetime.now() < datetime.timedelta(minutes=10):
                 try:
                     await guild.get_member(inscrit).send(f"Attention ! Il ne te reste plus qu'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
-                except:
+                except discord.Forbidden:
                     pass
 
     if rappel_msg != "":
@@ -737,11 +733,11 @@ async def end_check_in():
     for inscrit in list(participants):
         if participants[inscrit]["checked_in"] == False:
             challonge.participants.destroy(tournoi["id"], participants[inscrit]['challonge'])
+            to_dq = guild.get_member(inscrit)
             try:
-                to_dq = guild.get_member(inscrit)
                 await to_dq.remove_roles(guild.get_role(challenger_id))
                 await to_dq.send(f"Tu as été DQ du tournoi {tournoi['name']} car tu n'as pas check-in à temps, désolé !")
-            except:
+            except (discord.HTTPException, discord.Forbidden):
                 pass
             del participants[inscrit]
 
@@ -764,7 +760,7 @@ def can_check_in(ctx):
             ctx.channel.id == check_in_channel_id,
             ctx.author.id in participants
         ])
-    except:
+    except KeyError:
         return False
     else:
         return conditions
@@ -808,7 +804,7 @@ async def check_out(ctx):
     try:
         inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
         await inscription.remove_reaction("✅", ctx.author)
-    except:
+    except (discord.HTTPException, discord.NotFound):
         pass
 
     await update_annonce()
@@ -838,7 +834,7 @@ async def post_bracket(ctx):
     try:
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         await ctx.send(f"{server_logo} **{tournoi['name']}** : {tournoi['url']}")
-    except:
+    except KeyError:
         await ctx.send("Désolé, il n'y a pas de tournoi prévu à l'heure actuelle.")
 
 
@@ -853,15 +849,14 @@ async def flipcoin(ctx):
 @commands.has_role(to_id)
 async def add_inscrit(ctx):
 
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    
     try:
-        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
         if datetime.datetime.now() > tournoi["fin_check-in"]:
             await ctx.message.add_reaction("🚫")
             return
-
-    except:
+    except KeyError:
         await message.add_reaction("⚠️")
         return
 
@@ -920,11 +915,11 @@ async def score_match(ctx, arg):
 
     if ctx.channel.id != scores_channel_id: return
 
-    try:
-        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-        with open(stream_path, 'r+') as f: stream = json.load(f)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(stream_path, 'r+') as f: stream = json.load(f)
 
+    try:
         if tournoi["statut"] != "underway": return
 
         winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
@@ -940,35 +935,33 @@ async def score_match(ctx, arg):
 
     try:
         score = re.search(r'([0-9]+) *\- *([0-9]+)', arg).group().replace(" ", "")
-
-    except:
+    except AttributeError:
         await ctx.message.add_reaction("⚠️")
         await ctx.send(f"<@{ctx.author.id}> **Ton score ne possède pas le bon format** *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
         return
 
+    if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
+
+    if is_top8(match[0]["round"]):
+        aimed_score, looser_score, temps_min = 3, [0, 1, 2], 10
     else:
-        if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
+        aimed_score, looser_score, temps_min = 2, [0, 1], 5
 
-        if is_top8(match[0]["round"]):
-            aimed_score, looser_score, temps_min = 3, [0, 1, 2], 10
-        else:
-            aimed_score, looser_score, temps_min = 2, [0, 1], 5
+    debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
 
-        debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
+    if (int(score[0]) != aimed_score) or (int(score[2]) not in looser_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
+        await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
+        return
 
-        if (int(score[0]) != aimed_score) or (int(score[2]) not in looser_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
-            await ctx.message.add_reaction("⚠️")
-            await ctx.send(f"<@{ctx.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
-            return
+    for joueur in participants:
+        if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
+        if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
 
-        for joueur in participants:
-            if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
-            if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+    og_score = score
 
-        og_score = score
-
-        if winner == participants[player2]["challonge"]:
-            score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
+    if winner == participants[player2]["challonge"]:
+        score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
 
     try:
         challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
@@ -1048,9 +1041,12 @@ async def launch_matches(guild, bracket):
                         player1: discord.PermissionOverwrite(read_messages=True),
                         player2: discord.PermissionOverwrite(read_messages=True)
                     },
-                    category=arenes)
+                    category = discord.Object(id=arenes_cat_id),
+                    topic = "Channel temporaire pour un set.",
+                    reason = f"Lancement du set n°{match['suggested_play_order']}"
+                )
 
-            except:
+            except discord.HTTPException:
                 gaming_channel_txt = f":video_game: Je n'ai pas pu créer de channel, faites votre set en MP ou dans <#{tournoi_channel_id}>."
 
                 if match["suggested_play_order"] in stream:
@@ -1124,7 +1120,6 @@ async def add_stream(ctx, *args):
 
     try:
         bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
-
     except:
         await ctx.message.add_reaction("⚠️")
         return
@@ -1160,7 +1155,7 @@ async def remove_stream(ctx, *args):
             for order in args: stream.remove(order)
             with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
             await ctx.message.add_reaction("✅")
-        except:
+        except ValueError:
             await ctx.message.add_reaction("⚠️")
 
 
@@ -1169,10 +1164,11 @@ async def remove_stream(ctx, *args):
 @commands.has_role(to_id)
 async def list_stream(ctx):
 
+    with open(stream_path, 'r+') as f: stream = json.load(f)
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
     try:
-        with open(stream_path, 'r+') as f: stream = json.load(f)
-        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
         bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
     except:
         await ctx.message.add_reaction("⚠️")
@@ -1339,7 +1335,7 @@ async def rappel_matches(guild, bracket):
 
                                 try:
                                     winner
-                                except:
+                                except NameError:
                                     winner, winner_last_activity = message.author, message.created_at # Le premier résultat sera assigné à winner
                                 else:
                                     if message.author != winner:
@@ -1348,7 +1344,7 @@ async def rappel_matches(guild, bracket):
                         
                         try:
                             winner
-                        except: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
+                        except NameError: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique des __2 joueurs__ pour inactivité : <@{player1.id}> & <@{player2.id}>**")
                             challonge.participants.destroy(tournoi["id"], participants[player1.id]['challonge'])
                             challonge.participants.destroy(tournoi["id"], participants[player2.id]['challonge'])
@@ -1356,7 +1352,7 @@ async def rappel_matches(guild, bracket):
 
                         try:
                             looser
-                        except: # S'il n'y a pas eu de résultat pour un second joueur différent : DQ de l'inactif
+                        except NameError: # S'il n'y a pas eu de résultat pour un second joueur différent : DQ de l'inactif
                             looser = player2 if winner.id == player1.id else player1
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique de <@{looser.id}> pour inactivité.**")
                             challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
@@ -1386,7 +1382,7 @@ async def get_stagelist(ctx):
 
         await ctx.send(msg)
 
-    except:
+    except KeyError:
         await ctx.send(":warning: Aucun tournoi n'est en cours, je ne peux pas fournir de stagelist pour un jeu inconnu.")
 
 
@@ -1401,7 +1397,6 @@ async def send_lag_text(ctx):
 
     try:
         if tournoi['game'] == 'Project+':
-
             msg += (f"\n{stagelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
                     ":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
                     "- Baisser la résolution interne dans les paramètres graphiques.\n"
@@ -1411,7 +1406,7 @@ async def send_lag_text(ctx):
                     "- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `!buffer` en fournissant votre ping.\n"
                     "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
                     ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
-    except:
+    except KeyError:
         pass
 
     await ctx.send(msg)
@@ -1480,7 +1475,7 @@ async def attribution_role(event):
             try:
                 await event.member.add_roles(role)
                 await event.member.send(f"Le rôle **{role.name}** t'a été attribué avec succès : tu recevras des informations concernant les tournois *{game}* !")
-            except:
+            except (discord.HTTPException, discord.Forbidden):
                 pass
 
         elif event.emoji.name == stagelist[game]['icon_1v1']:
@@ -1489,7 +1484,7 @@ async def attribution_role(event):
             try:
                 await event.member.add_roles(role)
                 await event.member.send(f"Le rôle **{role.name}** t'a été attribué avec succès : tu seras contacté si un joueur cherche des combats sur *{game}* !")
-            except:
+            except (discord.HTTPException, discord.Forbidden):
                 pass
 
 
@@ -1507,7 +1502,7 @@ async def retirer_role(event):
             try:
                 await member.remove_roles(role)
                 await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne recevras plus les informations concernant les tournois *{game}*.")
-            except:
+            except (discord.HTTPException, discord.Forbidden):
                 pass
 
         elif event.emoji.name == stagelist[game]['icon_1v1']:
@@ -1516,7 +1511,7 @@ async def retirer_role(event):
             try:
                 await member.remove_roles(role)
                 await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne seras plus contacté si un joueur cherche des combats sur *{game}*.")
-            except:
+            except (discord.HTTPException, discord.Forbidden):
                 pass
 
 
