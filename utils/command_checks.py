@@ -3,6 +3,9 @@ import json
 from datetime import datetime
 from discord.ext import commands
 
+from utils.get_config import *
+from utils.json_hooks import dateconverter, dateparser, int_keys
+
 # Is tournament pending?
 def tournament_is_pending(ctx):
     try:

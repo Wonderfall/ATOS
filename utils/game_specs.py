@@ -1,5 +1,8 @@
 import json
 
+from utils.get_config import *
+from utils.json_hooks import dateconverter, dateparser, int_keys
+
 ### Accès stream
 def get_access_stream():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)

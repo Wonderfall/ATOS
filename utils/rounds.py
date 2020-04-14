@@ -1,5 +1,8 @@
 import json
 
+from utils.get_config import *
+from utils.json_hooks import dateconverter, dateparser, int_keys
+
 ### Determine whether a match is top 8 or not
 def is_top8(match_round):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
