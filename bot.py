@@ -10,7 +10,7 @@ from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
 
 # Import configuration (variables only)
-from utils.config import *
+from utils.get_config import *
 
 # Import raw texts (variables only)
 from utils.raw_texts import *
