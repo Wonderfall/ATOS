@@ -865,7 +865,14 @@ async def launch_matches(guild, bracket):
 
             sets += f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
 
-    if sets != "": await bot.get_channel(queue_channel_id).send(sets)
+    if sets != "":
+        if len(sets) < 2000:
+            await bot.get_channel(queue_channel_id).send(sets)
+        else: # Discord doesn't deal with more than 2000 characters
+            sets = [x.strip() for x in sets.split('\n\n') if x.strip() != ''] # so we have to split
+            while sets:
+                await bot.get_channel(queue_channel_id).send('\n\n'.join(sets[:10]))
+                del sets[:10] # and send by groups of ten sets
 
 
 ### Ajout ID et MDP d'arène de stream
