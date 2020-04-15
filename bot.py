@@ -1377,8 +1377,12 @@ async def send_desync_help(ctx):
 ### On command error : invoker has not enough permissions
 @bot.event
 async def on_command_error(ctx, error):
+
     if isinstance(error, (commands.CheckFailure, commands.MissingRole)):
         await ctx.message.add_reaction("🚫")
+
+    elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
+        await ctx.message.add_reaction("⚠️")
 
 
 #### Scheduler
