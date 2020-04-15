@@ -707,6 +707,7 @@ async def self_dq(ctx):
 ### Managing sets during tournament : launch & remind
 ### Goal : get the bracket only once to limit API calls
 async def underway_tournament():
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     guild = bot.get_guild(id=guild_id)
     bracket = challonge.matches.index(tournoi["id"], state="open")
     await launch_matches(guild, bracket)
