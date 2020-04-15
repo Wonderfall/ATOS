@@ -362,7 +362,7 @@ async def inscrire(member):
 
         participants[member.id] = {
             "display_name" : member.display_name,
-            "challonge" : await http_retry(challonge.participants.create, [tournoi["id"], member.display_name])['id'],      
+            "challonge" : await http_retry(challonge.participants.create, [tournoi["id"], member.display_name])['id'],
             "checked_in" : False
         }
 
@@ -737,7 +737,7 @@ async def score_match(ctx, arg):
     try:
         await http_retry(
             challonge.matches.update,
-            [tournoi['id'], match[0]["id"]],
+            [tournoi['id'], match[0]['id']],
             {'scores_csv' : score, 'winner_id' : winner}
         )
         await ctx.message.add_reaction("✅")
@@ -801,7 +801,12 @@ async def forfeit_match(ctx):
             winner = participants[player2]["challonge"]
             score = "0-1"
 
-        challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
+        await http_retry(
+            challonge.matches.update,
+            [tournoi['id'], match[0]['id']],
+            {'scores_csv' : score, 'winner_id' : winner}
+        )
+
         await ctx.message.add_reaction("✅")
 
     except:
