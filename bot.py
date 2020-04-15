@@ -950,8 +950,8 @@ async def remove_stream(ctx, *args: int):
     with open(stream_path, 'r+') as f: stream = json.load(f)
 
     try:
-        for arg in args: stream.remove(int(arg))
-    except (ValueError, TypeError):
+        for arg in args: stream.remove(arg)
+    except ValueError:
         await ctx.message.add_reaction("⚠️")
     else:
         with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
