@@ -1264,13 +1264,14 @@ async def annonce_resultats():
         "Ce fut un plaisir en tant que bot d'aider à la gestion de ce tournoi et d'assister à vos merveileux sets."
     ])
     
-    classement = (f"{server_logo} **Résultats du {tournoi['name']}** ({len(participants)} entrants) :\n\n"
-                  f":trophy: **{resultats[0][1]}**\n"
-                  f":second_place: {resultats[1][1]}\n"
-                  f":third_place: {resultats[2][1]}\n"
-                  f"**4e** : {resultats[3][1]}\n"
-                  f"**5e** : {fifth[0]} / {fifth[1]}\n"
-                  f"**7e** : {seventh[0]} / {seventh[1]}\n\n"
+    classement = (f"{server_logo} **__Résultats du {tournoi['name']}__**\n\n"
+                  f":trophy: **1er** : **{resultats[0][1]}**\n"
+                  f":second_place: **2e** : {resultats[1][1]}\n"
+                  f":third_place: **3e** : {resultats[2][1]}\n"
+                  f":medal: **4e** : {resultats[3][1]}\n"
+                  f":reminder_ribbon: **5e** : {fifth[0]} / {fifth[1]}\n"
+                  f":reminder_ribbon: **7e** : {seventh[0]} / {seventh[1]}\n\n"
+                  f":bar_chart: {len(participants)}\n"
                   f"{stagelist[tournoi['game']]['icon']} {tournoi['game']}\n"
                   f":link: **Bracket :** {tournoi['url']}\n\n"
                   f"{ending}")
