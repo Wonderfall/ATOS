@@ -20,7 +20,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.1"
+version = "5.2"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -1016,9 +1016,9 @@ async def list_stream(ctx):
                 break
 
     if list_stream != "":
-        msg += f":play_pause: Liste des sets prévus pour passer on stream prochainement :\n{list_stream}"
+        msg += f":play_pause: Liste des sets prévus pour passer on stream :\n{list_stream}"
     else:
-        msg += ":play_pause: Il n'y a aucun set prévu pour passer on stream prochainement."
+        msg += ":play_pause: Il n'y a aucun set prévu pour passer on stream."
 
     await ctx.send(msg)
 
@@ -1051,8 +1051,8 @@ async def call_stream(guild, bracket):
         await player1.send(dm_msg)
         await player2.send(dm_msg)
     else:
-        await gaming_channel.send(f":clapper: **C'est votre tour de passer on stream !** Voici les codes d'accès :\n{get_access_stream()}\n\n"
-                                  f"<@{player1.id}> <@{player2.id}>") # ping them
+        await gaming_channel.send(f"<@{player1.id}> <@{player2.id}>\n" # ping them
+                                  f":clapper: **C'est votre tour de passer on stream !** Voici les codes d'accès :\n{get_access_stream()}")
 
     await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
