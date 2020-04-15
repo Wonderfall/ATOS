@@ -1271,7 +1271,7 @@ async def annonce_resultats():
                   f":medal: **4e** : {resultats[3][1]}\n"
                   f":reminder_ribbon: **5e** : {fifth[0]} / {fifth[1]}\n"
                   f":reminder_ribbon: **7e** : {seventh[0]} / {seventh[1]}\n\n"
-                  f":bar_chart: {len(participants)}\n"
+                  f":bar_chart: {len(participants)} entrants\n"
                   f"{stagelist[tournoi['game']]['icon']} {tournoi['game']}\n"
                   f":link: **Bracket :** {tournoi['url']}\n\n"
                   f"{ending}")
