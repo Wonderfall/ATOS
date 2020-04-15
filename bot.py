@@ -2,12 +2,14 @@ import discord, random, logging, os, json, re, challonge, dateutil.parser, dateu
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
+from requests.exceptions import HTTPError
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
 from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
+from utils.http_retry import http_retry
 
 # Import configuration (variables only)
 from utils.get_config import *
@@ -360,7 +362,7 @@ async def inscrire(member):
 
         participants[member.id] = {
             "display_name" : member.display_name,
-            "challonge" : challonge.participants.create(tournoi["id"], member.display_name)['id'],
+            "challonge" : await http_retry(challonge.participants.create, [tournoi["id"], member.display_name])['id'],      
             "checked_in" : False
         }
 
@@ -422,7 +424,7 @@ async def desinscrire(member):
 
     if member.id in participants:
 
-        challonge.participants.destroy(tournoi["id"], participants[member.id]['challonge'])
+        await http_retry(challonge.participants.destroy, [tournoi['id'], participants[member.id]['challonge']])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
             try:
@@ -651,30 +653,11 @@ async def remove_inscrit(ctx):
 
 ### Se DQ soi-même
 @bot.command(name='dq')
-@commands.check(tournament_is_underway_or_pending)
+@commands.has_role(challenger_id)
+@commands.check(tournament_is_underway)
 async def self_dq(ctx):
-
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    if ctx.author.id in participants:
-
-        challonge.participants.destroy(tournoi["id"], participants[ctx.author.id]['challonge'])
-
-        if datetime.datetime.now() > tournoi["début_check-in"]:
-            await ctx.author.remove_roles(ctx.guild.get_role(challenger_id))
-
-        if datetime.datetime.now() < tournoi["fin_check-in"]:
-            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-            await inscription.remove_reaction("✅", ctx.author)
-            del participants[ctx.author.id]
-            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-            await update_annonce()
-
-        await ctx.message.add_reaction("✅")
-
-    else:
-        await ctx.message.add_reaction("⚠️")
+    await desinscrire(ctx.author)
+    await ctx.message.add_reaction("✅")
 
 
 ### Managing sets during tournament : launch & remind
@@ -701,14 +684,24 @@ async def score_match(ctx, arg):
     winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
 
     try:
-        match = challonge.matches.index(tournoi['id'], state="open", participant_id=winner)
+        match = await http_retry(
+            challonge.matches.index,
+            [tournoi['id']],
+            {'state' : 'open', 'participant_id' : winner}
+        )
+    except HTTPError:
+        await ctx.message.add_reaction("🕐")
+        await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu récupérer les données du set. Merci de retenter dans quelques instants.")
+        return
 
+    try:
         if match[0]["underway_at"] == None:
-            await ctx.send(f"<@{ctx.author.id}> Huh, le set pour lequel tu as donné le score n'a **pas encore commencé** !")
+            await ctx.message.add_reaction("⚠️")
+            await ctx.send(f"<@{ctx.author.id}> Le set pour lequel tu as donné le score n'a **pas encore commencé** !")
             return
-
-    except:
+    except IndexError:
         await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> Tu n'as pas de set prévu pour le moment, il n'y a donc pas de score à rentrer.")
         return
 
     try:
@@ -742,11 +735,16 @@ async def score_match(ctx, arg):
         score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
 
     try:
-        challonge.matches.update(tournoi['id'], match[0]["id"], scores_csv=score, winner_id=winner)
+        await http_retry(
+            challonge.matches.update,
+            [tournoi['id'], match[0]["id"]],
+            {'scores_csv' : score, 'winner_id' : winner}
+        )
         await ctx.message.add_reaction("✅")
 
     except:
-        await ctx.message.add_reaction("⚠️")
+        await ctx.message.add_reaction("🕐")
+        await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu envoyer ton score. Merci de retenter dans quelques instants.")
 
     else:
         gaming_channel = discord.utils.get(ctx.guild.text_channels, name=str(match[0]["suggested_play_order"]))
