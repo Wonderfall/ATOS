@@ -127,8 +127,8 @@ async def setup_tournament(ctx, arg):
 
 
 ### AUTO-MODE : will take care of creating tournaments for you
-@scheduler.scheduled_job('interval', id='auto_mode', minutes=10)
-async def auto_mode():
+@scheduler.scheduled_job('interval', id='auto_setup_tournament', hours=1)
+async def auto_setup_tournament():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(auto_mode_path, 'r+') as f: tournaments = yaml.full_load(f)
 
@@ -137,7 +137,7 @@ async def auto_mode():
     #    - A tournament is already initialized
     #    - It's "night" time
 
-    if (auto_mode == False) or (tournoi != {}) or (not 9 < datetime.datetime.now().hour < 23): return
+    if (auto_mode != True) or (tournoi != {}) or (not 10 < datetime.datetime.now().hour < 22): return
 
     for tournament in tournaments:
 
@@ -152,7 +152,9 @@ async def auto_mode():
  
             next_date = (datetime.datetime.now().astimezone() + relative).replace(
                 hour = dateutil.parser.parse(tournaments[tournament]["start"]).hour,
-                minute = dateutil.parser.parse(tournaments[tournament]["start"]).minute
+                minute = dateutil.parser.parse(tournaments[tournament]["start"]).minute,
+                second = 0,
+                microsecond = 0 # for dateparser to work
             )
 
             # If the tournament is supposed to be in less than 36 hours, let's go !
