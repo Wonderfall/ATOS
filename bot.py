@@ -1336,6 +1336,7 @@ async def on_raw_reaction_remove(event):
 @bot.command(name='help', aliases=['info', 'version'])
 async def send_help(ctx):
     await ctx.send(f"{help_text}\n**{name} {version}** - *Made by {author} with* :heart:")
+    if to_id in [y.id for y in ctx.author.roles]: await ctx.send(admin_help_text) # admin help
 
 
 ### Desync message
