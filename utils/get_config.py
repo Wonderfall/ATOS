@@ -43,7 +43,8 @@ faq_channel_id                      = config["discord"]["channels"]["faq"]
 
 ### Server categories
 tournoi_cat_id                      = config["discord"]["categories"]["tournoi"]
-arenes_cat_id                       = config["discord"]["categories"]["arenes"]
+winner_cat_id                       = config["discord"]["categories"]["winner"]
+looser_cat_id                       = config["discord"]["categories"]["looser"]
 
 ### Role IDs
 challenger_id                       = config["discord"]["roles"]["challenger"]

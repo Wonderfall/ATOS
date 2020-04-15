@@ -604,7 +604,7 @@ async def purge_channels():
                     async for message in channel.history():
                         await message.delete()
 
-            if category.id == arenes_cat_id:
+            if category.id in [winner_cat_id, looser_cat_id]:
                 for channel in channels:
                     await channel.delete()
 
@@ -753,12 +753,30 @@ async def score_match(ctx, arg):
 
         if gaming_channel != None:
             await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[ctx.author.id]['display_name']}** gagne **{og_score}** !\n"
-                                      f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*")
+                                      f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*\n"
+                                      f"*Note : ce channel sera automatiquement supprimé dans 10 minutes.*")
+
+            scheduler.add_job(
+                scheduled_channel_removal,
+                id = f'remove {gaming_channel.name}',
+                args = [gaming_channel.name],
+                run_date = datetime.datetime.now() + datetime.timedelta(minutes=10)
+            )
 
         if match[0]["suggested_play_order"] == tournoi["on_stream"]:
             tournoi["on_stream"] = None
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
             await call_stream()
+
+
+# Scheduled channel removal
+async def scheduled_channel_removal(channel_name):
+    guild = bot.get_guild(id=guild_id)
+    gaming_channel = discord.utils.get(guild.text_channels, name=channel_name)
+    try:
+        await gaming_channel.delete(reason="Scheduled channel removal")
+    except (discord.NotFound, discord.HTTPException):
+        pass
 
 
 ### Forfeit
@@ -820,7 +838,7 @@ async def launch_matches(guild, bracket):
                         player1: discord.PermissionOverwrite(read_messages=True),
                         player2: discord.PermissionOverwrite(read_messages=True)
                     },
-                    category = discord.Object(id=arenes_cat_id),
+                    category = discord.Object(id=(winner_cat_id if match["round"] > 0 else looser_cat_id)),
                     topic = "Channel temporaire pour un set.",
                     reason = f"Lancement du set n°{match['suggested_play_order']}"
                 )

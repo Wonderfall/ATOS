@@ -31,7 +31,8 @@ discord:
     roles:
   categories:
     tournoi:
-    arenes:
+    winner:
+    looser:
   roles:
     challenger:
     to:
