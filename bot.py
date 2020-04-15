@@ -578,44 +578,18 @@ async def end_check_in():
 @bot.command(name='in')
 @commands.check(can_check_in)
 async def check_in(ctx):
-
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    if participants[ctx.author.id]["checked_in"] == False:
-        participants[ctx.author.id]["checked_in"] = True
-        with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-        await ctx.message.add_reaction("✅")
-
-    else:
-        await ctx.message.add_reaction("☑️")
-
-    await update_annonce()
+    participants[ctx.author.id]["checked_in"] = True
+    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+    await ctx.message.add_reaction("✅")
 
 
 ### Prise en charge du check-in et check-out
 @bot.command(name='out')
 @commands.check(can_check_in)
 async def check_out(ctx):
-
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    challonge.participants.destroy(tournoi["id"], participants[ctx.author.id]['challonge'])
-    await ctx.author.remove_roles(ctx.guild.get_role(challenger_id))
-
-    del participants[ctx.author.id]
-    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-
+    await desinscrire(ctx.author)
     await ctx.message.add_reaction("✅")
-
-    try:
-        inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-        await inscription.remove_reaction("✅", ctx.author)
-    except (discord.HTTPException, discord.NotFound):
-        pass
-
-    await update_annonce()
 
 
 ### Nettoyer les channels liés aux tournois
