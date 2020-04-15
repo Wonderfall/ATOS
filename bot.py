@@ -782,31 +782,41 @@ async def forfeit_match(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
+    looser = participants[ctx.author.id]["challonge"]
+
     try:
-        looser = participants[ctx.author.id]["challonge"]
-        match = challonge.matches.index(tournoi['id'], state="open", participant_id=looser)
+        match = await http_retry(
+            challonge.matches.index,
+            [tournoi['id']],
+            {'state' : 'open', 'participant_id' : looser}
+        )
+    except HTTPError:
+        await ctx.message.add_reaction("⚠️")
+        return
+    else:
+        if match == []: return
 
-        for joueur in participants:
-            if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
-            if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+    for joueur in participants:
+        if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
+        if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
 
-        if looser == participants[player2]["challonge"]:
-            winner = participants[player1]["challonge"]
-            score = "1-0"
-        else:
-            winner = participants[player2]["challonge"]
-            score = "0-1"
+    if looser == participants[player2]["challonge"]:
+        winner = participants[player1]["challonge"]
+        score = "1-0"
+    else:
+        winner = participants[player2]["challonge"]
+        score = "0-1"
 
+    try:
         await http_retry(
             challonge.matches.update,
             [tournoi['id'], match[0]['id']],
             {'scores_csv' : score, 'winner_id' : winner}
         )
-
-        await ctx.message.add_reaction("✅")
-
-    except:
+    except HTTPError:
         await ctx.message.add_reaction("⚠️")
+    else:
+        await ctx.message.add_reaction("✅")
 
 
 ### Lancer matchs ouverts
@@ -972,6 +982,7 @@ async def list_stream(ctx):
         bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
     except HTTPError:
         await ctx.message.add_reaction("🕐")
+        return
 
     msg = f":information_source: Codes d'accès au stream :\n{get_access_stream()}\n"
 
