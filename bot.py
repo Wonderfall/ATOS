@@ -432,34 +432,14 @@ async def desinscrire(member):
 
         if datetime.datetime.now() < tournoi["fin_check-in"]:
 
+            del participants[member.id]
+            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+
             try:
                 inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
                 await inscription.remove_reaction("✅", member)
             except (discord.HTTPException, discord.NotFound):
                 pass
-
-            del participants[member.id]
-
-            try:
-                next_waiting_player = next(iter(waiting_list))
-            except StopIteration:
-                pass
-            else:
-                participants[next_waiting_player] = waiting_list[next_waiting_player]
-                participants[next_waiting_player]["checked_in"] = False
-                participants[next_waiting_player]["challonge"] = challonge.participants.create(tournoi["id"], participants[next_waiting_player]["display_name"])['id']
-
-                del waiting_list[next_waiting_player]
-                with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
-
-                await update_waiting_list()
-
-                try:
-                    await member.guild.get_member(next_waiting_player).send(f"Bonne nouvelle, une place s'est libérée ! Tu es inscrit(e) pour le tournoi **{tournoi['name']}**.")
-                except discord.Forbidden:
-                    pass
-
-            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
 
             await update_annonce()
 
@@ -467,6 +447,25 @@ async def desinscrire(member):
                 await member.send(f"Tu es désinscrit(e) du tournoi **{tournoi['name']}**. À une prochaine fois peut-être !")
             except discord.Forbidden:
                 pass
+
+            # If there's a waiting list, add the next waiting player
+            try:
+                next_waiting_player = next(iter(waiting_list))
+            except StopIteration:
+                pass
+            else:
+                await inscrire(member.guild.get_member(next_waiting_player))
+
+                # Since the member can be inactive, check-in should be required
+                with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+                participants[next_waiting_player]["checked_in"] = False
+                with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+
+                del waiting_list[next_waiting_player]
+                with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
+
+                await update_waiting_list()
+
 
     elif member.id in waiting_list:
 
@@ -510,7 +509,7 @@ async def start_check_in():
                                                         f"Vous pouvez toujours vous inscrire ici jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** tant qu'il y a de la place.")
 
     await bot.get_channel(check_in_channel_id).send(f"<@&{challenger_id}> Le check-in pour **{tournoi['name']}** a commencé ! "
-                                                    f"vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
+                                                    f"Vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
                                                     f":white_small_square: Utilisez `!in` pour confirmer votre inscription\n:white_small_square: Utilisez `!out` pour vous désinscrire\n\n"
                                                     f"*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*")
 
