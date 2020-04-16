@@ -637,7 +637,6 @@ async def flipcoin(ctx):
 @commands.check(tournament_is_pending)
 async def add_inscrit(ctx):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     
     if datetime.datetime.now() > tournoi["fin_check-in"]:
@@ -689,7 +688,6 @@ async def score_match(ctx, arg):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(stream_path, 'r+') as f: stream = json.load(f)
 
     winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
 
