@@ -678,6 +678,7 @@ async def underway_tournament():
 @in_channel(scores_channel_id)
 @commands.check(tournament_is_underway)
 @commands.has_role(challenger_id)
+@commands.max_concurrency(1, wait=True)
 async def score_match(ctx, arg):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
@@ -779,6 +780,7 @@ async def scheduled_channel_removal(channel_name):
 @bot.command(name='forfeit', aliases=['ff', 'loose'])
 @commands.check(tournament_is_underway)
 @commands.has_role(challenger_id)
+@commands.max_concurrency(1, wait=True)
 async def forfeit_match(ctx):
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -925,6 +927,7 @@ async def setup_stream(ctx, *args):
 @bot.command(name='addstream')
 @commands.has_role(to_id)
 @commands.check(tournament_is_underway_or_pending)
+@commands.max_concurrency(1, wait=True)
 async def add_stream(ctx, *args: int):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
@@ -974,6 +977,7 @@ async def remove_stream(ctx, *args: int):
 @bot.command(name='stream')
 @commands.has_role(to_id)
 @commands.check(tournament_is_underway_or_pending)
+@commands.max_concurrency(1, wait=True)
 async def list_stream(ctx):
 
     with open(stream_path, 'r+') as f: stream = json.load(f)
