@@ -811,11 +811,9 @@ async def forfeit_match(ctx):
         return
 
     if looser == participants[player2]["challonge"]:
-        winner = participants[player1]["challonge"]
-        score = "1-0"
+        winner, score = participants[player1]["challonge"], "1-0"
     else:
-        winner = participants[player2]["challonge"]
-        score = "0-1"
+        winner, score = participants[player2]["challonge"], "0-1"
 
     try:
         await http_retry(
