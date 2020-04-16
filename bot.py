@@ -1205,19 +1205,16 @@ async def send_lag_text(ctx):
 
     msg = lag_text
 
-    try:
-        if tournoi['game'] == 'Project+':
-            msg += (f"\n{stagelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
-                    ":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
-                    "- Baisser la résolution interne dans les paramètres graphiques.\n"
-                    "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
-                    "- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
-                    ":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
-                    "- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `!buffer` en fournissant votre ping.\n"
-                    "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
-                    ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
-    except KeyError:
-        pass
+    if tournoi['game'] == 'Project+':
+        msg += (f"\n{stagelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
+                ":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
+                "- Baisser la résolution interne dans les paramètres graphiques.\n"
+                "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
+                "- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
+                ":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
+                "- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `!buffer` en fournissant votre ping.\n"
+                "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
+                ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
 
     await ctx.send(msg)
 
