@@ -580,6 +580,8 @@ async def end_check_in():
 ### Prise en charge du check-in et check-out
 @bot.command(name='in')
 @commands.check(can_check_in)
+@commands.cooldown(1, 30, type=commands.BucketType.user)
+@commands.max_concurrency(1, wait=True)
 async def check_in(ctx):
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     participants[ctx.author.id]["checked_in"] = True
@@ -590,6 +592,8 @@ async def check_in(ctx):
 ### Prise en charge du check-in et check-out
 @bot.command(name='out')
 @commands.check(can_check_in)
+@commands.cooldown(1, 30, type=commands.BucketType.user)
+@commands.max_concurrency(1, wait=True)
 async def check_out(ctx):
     await desinscrire(ctx.author)
     await ctx.message.add_reaction("✅")
@@ -657,6 +661,7 @@ async def remove_inscrit(ctx):
 @bot.command(name='dq')
 @commands.has_role(challenger_id)
 @commands.check(tournament_is_underway)
+@commands.max_concurrency(1, wait=True)
 async def self_dq(ctx):
     await desinscrire(ctx.author)
     await ctx.message.add_reaction("✅")
@@ -678,6 +683,7 @@ async def underway_tournament():
 @in_channel(scores_channel_id)
 @commands.check(tournament_is_underway)
 @commands.has_role(challenger_id)
+@commands.cooldown(1, 30, type=commands.BucketType.user)
 @commands.max_concurrency(1, wait=True)
 async def score_match(ctx, arg):
 
@@ -780,6 +786,7 @@ async def scheduled_channel_removal(channel_name):
 @bot.command(name='forfeit', aliases=['ff', 'loose'])
 @commands.check(tournament_is_underway)
 @commands.has_role(challenger_id)
+@commands.cooldown(1, 120, type=commands.BucketType.user)
 @commands.max_concurrency(1, wait=True)
 async def forfeit_match(ctx):
 
@@ -1192,6 +1199,7 @@ async def get_stagelist(ctx):
 ### Lag
 @bot.command(name='lag')
 @commands.has_role(challenger_id)
+@commands.cooldown(1, 30, type=commands.BucketType.channel)
 async def send_lag_text(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
@@ -1351,6 +1359,7 @@ async def on_raw_reaction_remove(event):
 
 ### Help message
 @bot.command(name='help', aliases=['info', 'version'])
+@commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_help(ctx):
     await ctx.send(f"{help_text}\n**{name} {version}** - *Made by {author} with* :heart:")
     if to_id in [y.id for y in ctx.author.roles]: await ctx.send(admin_help_text) # admin help
@@ -1358,6 +1367,7 @@ async def send_help(ctx):
 
 ### Desync message
 @bot.command(name='desync')
+@commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_desync_help(ctx):
     await ctx.send(desync_text)
 
@@ -1371,6 +1381,9 @@ async def on_command_error(ctx, error):
 
     elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
         await ctx.message.add_reaction("⚠️")
+
+    elif isinstance(error, commands.CommandOnCooldown):
+        await ctx.message.add_reaction("❄️")
 
 
 #### Scheduler
