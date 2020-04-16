@@ -110,7 +110,7 @@ async def init_tournament(url_or_id):
 @commands.has_role(to_id)
 async def setup_tournament(ctx, arg):
 
-    if re.compile("^(https?\:\/\/)?(challonge.com)\/.+$").match(arg):
+    if re.compile(r"^(https?\:\/\/)?(challonge.com)\/.+$").match(arg):
         await init_tournament(arg.replace("https://challonge.com/", ""))
     else:
         await ctx.message.add_reaction("🔗")
