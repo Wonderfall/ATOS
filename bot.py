@@ -802,12 +802,13 @@ async def forfeit_match(ctx):
     except HTTPError:
         await ctx.message.add_reaction("⚠️")
         return
-    else:
-        if match == []: return
 
-    for joueur in participants:
-        if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
-        if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+    try:
+        for joueur in participants:
+            if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
+            if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+    except IndexError:
+        return
 
     if looser == participants[player2]["challonge"]:
         winner = participants[player1]["challonge"]
