@@ -70,7 +70,7 @@ async def init_tournament(url_or_id):
 
     try:
         infos = challonge.tournaments.show(url_or_id)
-    except:
+    except HTTPError:
         return
 
     tournoi = {
