@@ -750,7 +750,7 @@ async def score_match(ctx, arg):
         )
         await ctx.message.add_reaction("✅")
 
-    except:
+    except HTTPError:
         await ctx.message.add_reaction("🕐")
         await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu envoyer ton score. Merci de retenter dans quelques instants.")
 
