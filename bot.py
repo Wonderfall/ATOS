@@ -364,7 +364,7 @@ async def inscrire(member):
 
         participants[member.id] = {
             "display_name" : member.display_name,
-            "challonge" : await http_retry(challonge.participants.create, [tournoi["id"], member.display_name])['id'],
+            "challonge" : (await http_retry(challonge.participants.create, [tournoi["id"], member.display_name]))['id'],
             "checked_in" : False
         }
 
