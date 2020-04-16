@@ -43,7 +43,6 @@ async def on_ready():
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
     await bot.change_presence(activity=discord.Game(version)) # As of April 2020, CustomActivity is not supported for bots
-    #scheduler.add_job(auto_mode, 'interval', id='auto_mode', minutes=10, replace_existing=True)
     await reload_tournament()
 
 
@@ -115,6 +114,7 @@ async def setup_tournament(ctx, arg):
         await init_tournament(arg.replace("https://challonge.com/", ""))
     else:
         await ctx.message.add_reaction("🔗")
+        return
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
