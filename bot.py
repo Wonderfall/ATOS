@@ -162,6 +162,7 @@ async def auto_setup_tournament():
 
                 new_tournament = await http_retry(
                     challonge.tournaments.create,
+                    [],
                     {
                         'name': f"{tournament} #{tournaments[tournament]['edition']}",
                         'url': f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
