@@ -9,7 +9,7 @@ from utils.json_hooks import dateconverter, dateparser, int_keys
 from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
-from utils.http_retry import http_retry
+from utils.http_retry import async_http_retry
 
 # Import configuration (variables only)
 from utils.get_config import *
@@ -69,7 +69,7 @@ async def on_member_join(member):
 async def init_tournament(url_or_id):
 
     try:
-        infos = await http_retry(challonge.tournaments.show, [url_or_id])
+        infos = await async_http_retry(challonge.tournaments.show, url_or_id)
     except HTTPError:
         return
 
@@ -160,20 +160,18 @@ async def auto_setup_tournament():
             # If the tournament is supposed to be in less than 36 hours, let's go !
             if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = 36):
 
-                new_tournament = await http_retry(
+                new_tournament = await async_http_retry(
                     challonge.tournaments.create,
-                    [],
-                    {
-                        'name': f"{tournament} #{tournaments[tournament]['edition']}",
-                        'url': f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
-                        'tournament_type': 'double elimination',
-                        'show_rounds': True,
-                        'description': tournaments[tournament]['description'],
-                        'signup_cap': tournaments[tournament]['capping'],
-                        'game_name': tournaments[tournament]['game'],
-                        'start_at': next_date
-                    }
+                    name=f"{tournament} #{tournaments[tournament]['edition']}",
+                    url=f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
+                    tournament_type='double elimination',
+                    show_rounds=True,
+                    description=tournaments[tournament]['description'],
+                    signup_cap=tournaments[tournament]['capping'],
+                    game_name=tournaments[tournament]['game'],
+                    start_at=next_date
                 )
+
 
                 tournaments[tournament]["edition"] += 1
                 with open(auto_mode_path, 'w') as f: yaml.dump(tournaments, f)
@@ -190,7 +188,7 @@ async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if datetime.datetime.now() > tournoi["fin_check-in"]:
-        await http_retry(challonge.tournaments.start, [tournoi["id"]])
+        await async_http_retry(challonge.tournaments.start, tournoi["id"])
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
         await ctx.message.add_reaction("✅")
@@ -245,7 +243,7 @@ async def end_tournament(ctx):
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     if datetime.datetime.now() > tournoi["début_tournoi"]:
-        await http_retry(challonge.tournaments.finalize, [tournoi["id"]])
+        await async_http_retry(challonge.tournaments.finalize, tournoi["id"])
         await ctx.message.add_reaction("✅")
     else:
         await ctx.message.add_reaction("🕐")
@@ -368,7 +366,7 @@ async def inscrire(member):
 
         participants[member.id] = {
             "display_name" : member.display_name,
-            "challonge" : (await http_retry(challonge.participants.create, [tournoi["id"], member.display_name]))['id'],
+            "challonge" : (await async_http_retry(challonge.participants.create, tournoi["id"], member.display_name))['id'],
             "checked_in" : False
         }
 
@@ -430,7 +428,7 @@ async def desinscrire(member):
 
     if member.id in participants:
 
-        await http_retry(challonge.participants.destroy, [tournoi['id'], participants[member.id]['challonge']])
+        await async_http_retry(challonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
             try:
@@ -671,7 +669,7 @@ async def self_dq(ctx):
 async def underway_tournament():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     guild = bot.get_guild(id=guild_id)
-    bracket = await http_retry(challonge.matches.index, [tournoi["id"]], {"state": "open"})
+    bracket = await async_http_retry(challonge.matches.index, tournoi["id"], state='open')
     await launch_matches(guild, bracket)
     await call_stream(guild, bracket)
     await rappel_matches(guild, bracket)
@@ -692,10 +690,11 @@ async def score_match(ctx, arg):
     winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
 
     try:
-        match = await http_retry(
+        match = await async_http_retry(
             challonge.matches.index,
-            [tournoi['id']],
-            {'state' : 'open', 'participant_id' : winner}
+            tournoi['id'],
+            state='open',
+            participant_id=winner
         )
     except HTTPError:
         await ctx.message.add_reaction("🕐")
@@ -744,10 +743,12 @@ async def score_match(ctx, arg):
         score = score[::-1] # Le score doit suivre le format "player1-player2" pour scores_csv
 
     try:
-        await http_retry(
+        await async_http_retry(
             challonge.matches.update,
-            [tournoi['id'], match[0]['id']],
-            {'scores_csv' : score, 'winner_id' : winner}
+            tournoi['id'],
+            match[0]['id'],
+            scores_csv=score,
+            winner_id=winner
         )
         await ctx.message.add_reaction("✅")
 
@@ -795,10 +796,11 @@ async def forfeit_match(ctx):
     looser = participants[ctx.author.id]["challonge"]
 
     try:
-        match = await http_retry(
+        match = await async_http_retry(
             challonge.matches.index,
-            [tournoi['id']],
-            {'state' : 'open', 'participant_id' : looser}
+            tournoi['id'],
+            state='open',
+            participant_id=looser
         )
     except HTTPError:
         await ctx.message.add_reaction("⚠️")
@@ -817,10 +819,12 @@ async def forfeit_match(ctx):
         winner, score = participants[player2]["challonge"], "0-1"
 
     try:
-        await http_retry(
+        await async_http_retry(
             challonge.matches.update,
-            [tournoi['id'], match[0]['id']],
-            {'scores_csv' : score, 'winner_id' : winner}
+            tournoi['id'],
+            match[0]['id'],
+            scores_csv=score,
+            winner_id=winner
         )
     except HTTPError:
         await ctx.message.add_reaction("⚠️")
@@ -841,7 +845,7 @@ async def launch_matches(guild, bracket):
 
         if match["underway_at"] == None:
 
-            await http_retry(challonge.matches.mark_as_underway, [tournoi["id"], match["id"]])
+            await async_http_retry(challonge.matches.mark_as_underway, tournoi["id"], match["id"])
 
             for joueur in participants:
                 if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
@@ -946,7 +950,7 @@ async def add_stream(ctx, *args: int):
         return
 
     try:
-        bracket = await http_retry(challonge.matches.index, [tournoi['id']], {'state': ('open', 'pending')})
+        bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=('open', 'pending'))
     except HTTPError:
         await ctx.message.add_reaction("🕐")
         return
@@ -990,7 +994,7 @@ async def list_stream(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
-        bracket = await http_retry(challonge.matches.index, [tournoi['id']], {'state': ('open', 'pending')})
+        bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=('open', 'pending'))
     except HTTPError:
         await ctx.message.add_reaction("🕐")
         return

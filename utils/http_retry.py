@@ -4,7 +4,7 @@ import asyncio
 from requests.exceptions import HTTPError
 from utils.asynchronize import async_wrap
 
-async def http_retry(func, args=[], kwargs={}):
+async def async_http_retry(func, *args, **kwargs):
     for retry in range(3):
         try:
             return await (async_wrap(func))(*args, **kwargs)
