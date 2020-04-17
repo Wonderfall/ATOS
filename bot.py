@@ -137,7 +137,7 @@ async def auto_setup_tournament():
     #    - A tournament is already initialized
     #    - It's "night" time
 
-    if (auto_mode != True) or (tournoi != {}) or (not 10 < datetime.datetime.now().hour < 22): return
+    if (auto_mode != True) or (tournoi != {}) or (not 10 <= datetime.datetime.now().hour <= 22): return
 
     for tournament in tournaments:
 
