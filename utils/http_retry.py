@@ -13,7 +13,5 @@ async def http_retry(func, args=[], kwargs={}):
                 await asyncio.sleep(1+retry)
             else:
                 raise
-        else:
-            break
     else:
         raise HTTPError(f"Tried '{func.__name__}' several times without success")
