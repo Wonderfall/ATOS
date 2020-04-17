@@ -69,7 +69,7 @@ async def on_member_join(member):
 async def init_tournament(url_or_id):
 
     try:
-        infos = challonge.tournaments.show(url_or_id)
+        infos = await http_retry(challonge.tournaments.show, [url_or_id])
     except HTTPError:
         return
 
@@ -160,15 +160,18 @@ async def auto_setup_tournament():
             # If the tournament is supposed to be in less than 36 hours, let's go !
             if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = 36):
 
-                new_tournament = challonge.tournaments.create(
-                    name = f"{tournament} #{tournaments[tournament]['edition']}",
-                    url = f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
-                    tournament_type = "double elimination",
-                    show_rounds = True,
-                    description = tournaments[tournament]['description'],
-                    signup_cap = tournaments[tournament]['capping'],
-                    game_name = tournaments[tournament]['game'],
-                    start_at = next_date
+                new_tournament = await http_retry(
+                    challonge.tournaments.create,
+                    {
+                        'name': f"{tournament} #{tournaments[tournament]['edition']}",
+                        'url': f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
+                        'tournament_type': 'double elimination',
+                        'show_rounds': True,
+                        'description': tournaments[tournament]['description'],
+                        'signup_cap': tournaments[tournament]['capping'],
+                        'game_name': tournaments[tournament]['game'],
+                        'start_at': next_date
+                    }
                 )
 
                 tournaments[tournament]["edition"] += 1
@@ -186,7 +189,7 @@ async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if datetime.datetime.now() > tournoi["fin_check-in"]:
-        challonge.tournaments.start(tournoi["id"])
+        await http_retry(challonge.tournaments.start, [tournoi["id"]])
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
         await ctx.message.add_reaction("✅")
@@ -241,7 +244,7 @@ async def end_tournament(ctx):
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     if datetime.datetime.now() > tournoi["début_tournoi"]:
-        challonge.tournaments.finalize(tournoi["id"])
+        await http_retry(challonge.tournaments.finalize, [tournoi["id"]])
         await ctx.message.add_reaction("✅")
     else:
         await ctx.message.add_reaction("🕐")
@@ -671,7 +674,7 @@ async def self_dq(ctx):
 async def underway_tournament():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     guild = bot.get_guild(id=guild_id)
-    bracket = challonge.matches.index(tournoi["id"], state="open")
+    bracket = await http_retry(challonge.matches.index, [tournoi["id"]], {"state": "open"})
     await launch_matches(guild, bracket)
     await call_stream(guild, bracket)
     await rappel_matches(guild, bracket)
@@ -841,7 +844,7 @@ async def launch_matches(guild, bracket):
 
         if match["underway_at"] == None:
 
-            challonge.matches.mark_as_underway(tournoi["id"], match["id"])
+            await http_retry(challonge.matches.mark_as_underway, [tournoi["id"], match["id"]])
 
             for joueur in participants:
                 if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
@@ -946,7 +949,7 @@ async def add_stream(ctx, *args: int):
         return
 
     try:
-        bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
+        bracket = await http_retry(challonge.matches.index, [tournoi['id']], {'state': ('open', 'pending')})
     except HTTPError:
         await ctx.message.add_reaction("🕐")
         return
@@ -990,7 +993,7 @@ async def list_stream(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
-        bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
+        bracket = await http_retry(challonge.matches.index, [tournoi['id']], {'state': ('open', 'pending')})
     except HTTPError:
         await ctx.message.add_reaction("🕐")
         return
