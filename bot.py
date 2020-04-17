@@ -734,8 +734,8 @@ async def score_match(ctx, arg):
         return
 
     for joueur in participants:
-        if participants[joueur]["challonge"] == match[0]["player1_id"]: player1 = joueur
         if participants[joueur]["challonge"] == match[0]["player2_id"]: player2 = joueur
+        break
 
     og_score = score
 
