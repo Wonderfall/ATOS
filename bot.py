@@ -172,7 +172,6 @@ async def auto_setup_tournament():
                     start_at=next_date
                 )
 
-
                 tournaments[tournament]["edition"] += 1
                 with open(auto_mode_path, 'w') as f: yaml.dump(tournaments, f)
 
@@ -563,7 +562,7 @@ async def end_check_in():
 
     for inscrit in list(participants):
         if participants[inscrit]["checked_in"] == False:
-            challonge.participants.destroy(tournoi["id"], participants[inscrit]['challonge'])
+            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[inscrit]['challonge'])
             to_dq = guild.get_member(inscrit)
             try:
                 await to_dq.remove_roles(guild.get_role(challenger_id))
@@ -1081,7 +1080,7 @@ async def call_stream(guild, bracket):
 ### Calculer les rounds à partir desquels un set est top 8 (bracket D.E.)
 async def calculate_top8():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    bracket = challonge.matches.index(tournoi['id'], state=("open", "pending"))
+    bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=("open", "pending"))
 
     max_round_winner, max_round_looser = 1, -1
 
@@ -1161,8 +1160,8 @@ async def rappel_matches(guild, bracket):
                             winner
                         except NameError: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique des __2 joueurs__ pour inactivité : <@{player1.id}> & <@{player2.id}>**")
-                            challonge.participants.destroy(tournoi["id"], participants[player1.id]['challonge'])
-                            challonge.participants.destroy(tournoi["id"], participants[player2.id]['challonge'])
+                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[player1.id]['challonge'])
+                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[player2.id]['challonge'])
                             continue
 
                         try:
@@ -1170,12 +1169,12 @@ async def rappel_matches(guild, bracket):
                         except NameError: # S'il n'y a pas eu de résultat pour un second joueur différent : DQ de l'inactif
                             looser = player2 if winner.id == player1.id else player1
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique de <@{looser.id}> pour inactivité.**")
-                            challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
+                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
                             continue
 
                         if winner_last_activity - looser_last_activity > datetime.timedelta(minutes = 10): # Si différence d'inactivité de plus de 10 minutes
                             await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner.id}> passe au round suivant.\n-<@{looser.id}> est DQ du tournoi.")
-                            challonge.participants.destroy(tournoi["id"], participants[looser.id]['challonge'])
+                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
 
                         else: # Si pas de différence notable, demander une décision manuelle
                             await gaming_channel.send(f"<@&{to_id}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise")
@@ -1239,7 +1238,7 @@ async def annonce_resultats():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
-    participants, resultats = challonge.participants.index(tournoi["id"]), []
+    participants, resultats = await async_http_retry(challonge.participants.index, tournoi["id"]), []
 
     if len(participants) < 8:
         await bot.get_channel(resultats_channel_id).send(f"{server_logo} Résultats du **{tournoi['name']}** : {tournoi['url']}")
