@@ -36,8 +36,7 @@ def in_channel(channel_id):
         if ctx.channel.id != channel_id:
             await ctx.send(f"<@{ctx.author.id}> Cette commande fonctionne uniquement dans <#{channel_id}> !")
             return False
-        else:
-            return True
+        return True
     return commands.check(predicate)
 
 # Can check-in?
@@ -46,7 +45,7 @@ def can_check_in(ctx):
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     try:
-        conditions = all([
+        return all([
             challenger_id in [y.id for y in ctx.author.roles],
             tournoi["fin_check-in"] > datetime.now() > tournoi["début_check-in"],
             ctx.channel.id == check_in_channel_id,
@@ -54,5 +53,3 @@ def can_check_in(ctx):
         ])
     except KeyError:
         return False
-    else:
-        return conditions
