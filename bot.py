@@ -581,24 +581,20 @@ async def end_check_in():
 
 
 ### Prise en charge du check-in et check-out
-@bot.command(name='in')
+@bot.command(aliases=['in', 'out'])
 @commands.check(can_check_in)
 @commands.cooldown(1, 30, type=commands.BucketType.user)
 @commands.max_concurrency(1, wait=True)
 async def check_in(ctx):
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    participants[ctx.author.id]["checked_in"] = True
-    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-    await ctx.message.add_reaction("✅")
 
+    if ctx.invoked_with == 'out':
+        await desinscrire(ctx.author)
 
-### Prise en charge du check-in et check-out
-@bot.command(name='out')
-@commands.check(can_check_in)
-@commands.cooldown(1, 30, type=commands.BucketType.user)
-@commands.max_concurrency(1, wait=True)
-async def check_out(ctx):
-    await desinscrire(ctx.author)
+    else: # either in or check_in
+        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+        participants[ctx.author.id]["checked_in"] = True
+        with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+
     await ctx.message.add_reaction("✅")
 
 
