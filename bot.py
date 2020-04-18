@@ -929,6 +929,22 @@ async def init_stream(ctx, arg):
         await ctx.message.add_reaction("🔗")
 
 
+@bot.command(name='stream')
+@commands.check(tournament_is_underway_or_pending)
+async def post_stream(ctx):
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
+
+    if len(stream) == 0:
+        await ctx.send(f"<@{ctx.author.id}> Il n'y a pas de stream prévu pour ce tournoi à l'heure actuelle.")
+    
+    elif len(stream) == 1:
+        await ctx.send(f"<@{ctx.author.id}> https://www.twitch.tv/{stream[next(iter(stream))]['channel']}")
+
+    else:
+        multitwitch = 'http://www.multitwitch.tv/' + '/'.join([stream[x]['channel'] for x in stream])
+        await ctx.send(f"<@{ctx.author.id}> {multitwitch}")
+
+
 ### Ajout ID et MDP d'arène de stream
 @bot.command(name='setstream', aliases=['ss'])
 @commands.has_role(streamer_id)
