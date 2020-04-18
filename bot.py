@@ -6,7 +6,8 @@ from requests.exceptions import HTTPError
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
-from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in
+from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in, is_streaming
+from utils.stream import is_on_stream, is_queued_for_stream
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
 from utils.http_retry import async_http_retry
@@ -95,7 +96,7 @@ async def init_tournament(url_or_id):
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
     with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
-    with open(stream_path, 'w') as f: json.dump([], f, indent=4)
+    with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
     await annonce_inscription()
 
@@ -200,7 +201,9 @@ async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
 
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé, voici le bracket : {tournoi['url']} *(vous pouvez y accéder à tout moment avec la commande `!bracket` sur Discord et Twitch)*")
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé ! Voici le bracket : {tournoi['url']}\n"
+                                                   f":white_small_square: Vous pouvez y accéder à tout moment avec la commande `!bracket`.\n"
+                                                   f":white_small_square: Vous pouvez consulter les liens de stream avec la commande `!stream`.")
 
     score_annonce = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
                      f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
@@ -265,7 +268,7 @@ async def end_tournament(ctx):
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
     with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
     with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
-    with open(stream_path, 'w') as f: json.dump([], f, indent=4)
+    with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
     await bot.change_presence(activity=discord.Game(version))
 
@@ -657,6 +660,7 @@ async def remove_inscrit(ctx):
 @bot.command(name='dq')
 @commands.has_role(challenger_id)
 @commands.check(tournament_is_underway)
+@commands.cooldown(1, 30, type=commands.BucketType.user)
 @commands.max_concurrency(1, wait=True)
 async def self_dq(ctx):
     await desinscrire(ctx.author)
@@ -834,7 +838,6 @@ async def forfeit_match(ctx):
 ### Lancer matchs ouverts
 async def launch_matches(guild, bracket):
 
-    with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
@@ -867,9 +870,9 @@ async def launch_matches(guild, bracket):
             except discord.HTTPException:
                 gaming_channel_txt = f":video_game: Je n'ai pas pu créer de channel, faites votre set en MP ou dans <#{tournoi_channel_id}>."
 
-                if match["suggested_play_order"] in stream:
-                    await player1.send(f"Tu joueras on stream pour ton prochain set contre **{player2.display_name}** : je te communiquerai les codes d'accès de l'arène quand ce sera ton tour.")
-                    await player2.send(f"Tu joueras on stream pour ton prochain set contre **{player1.display_name}** : je te communiquerai les codes d'accès de l'arène quand ce sera ton tour.")
+                if is_queued_for_stream(match["suggested_play_order"]):
+                    await player1.send(f"Tu joueras on stream pour ton prochain set contre **{player2.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
+                    await player2.send(f"Tu joueras on stream pour ton prochain set contre **{player1.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
 
             else:
                 gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
@@ -889,12 +892,12 @@ async def launch_matches(guild, bracket):
                 if is_top8(match["round"]):
                     gaming_channel_annonce += ":fire: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
 
-                if match["suggested_play_order"] in stream:
-                    gaming_channel_annonce += ":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès de l'arène."
+                if is_queued_for_stream(match["suggested_play_order"]):
+                    gaming_channel_annonce += ":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
 
                 await gaming_channel.send(gaming_channel_annonce)
 
-            on_stream = "(**on stream**) :tv:" if match["suggested_play_order"] in stream else ""
+            on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
             top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
 
             sets += f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
@@ -909,45 +912,69 @@ async def launch_matches(guild, bracket):
                 del sets[:10] # and send by groups of ten sets
 
 
-### Ajout ID et MDP d'arène de stream
-@bot.command(name='setstream')
-@commands.has_role(to_id)
+@bot.command(name='initstream', aliases=['is'])
+@commands.has_role(streamer_id)
 @commands.check(tournament_is_underway_or_pending)
+async def init_stream(ctx, arg):
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
+
+    if re.compile(r"^(https?\:\/\/)?(www.twitch.tv)\/.+$").match(arg):
+        stream[ctx.author.id] = {
+            'channel': arg.replace("https://www.twitch.tv/", ""),
+            'access': ['N/A', 'N/A'],
+            'on_stream': None,
+            'queue': []
+        }
+        with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
+        await ctx.message.add_reaction("✅")
+    else:
+        await ctx.message.add_reaction("🔗")
+
+
+### Ajout ID et MDP d'arène de stream
+@bot.command(name='setstream', aliases=['ss'])
+@commands.has_role(streamer_id)
+@commands.check(tournament_is_underway_or_pending)
+@commands.check(is_streaming)
 async def setup_stream(ctx, *args):
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
 
     if tournoi['game'] == 'Super Smash Bros. Ultimate' and len(args) == 2:
-        tournoi["stream"] = args
+        stream[ctx.author.id]["access"] = args
 
     elif tournoi['game'] == 'Project+' and len(args) == 1:
-        tournoi["stream"] = args
+        stream[ctx.author.id]["access"] = args
 
     else:
         await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> Paramètres invalides pour le jeu **{tournoi['game']}**.")
         return
 
-    with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+    with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
     await ctx.message.add_reaction("✅")
 
 
 ### Ajouter un set dans la stream queue
-@bot.command(name='addstream')
-@commands.has_role(to_id)
+@bot.command(name='addstream', aliases=['as'])
+@commands.has_role(streamer_id)
 @commands.check(tournament_is_underway_or_pending)
+@commands.check(is_streaming)
 @commands.max_concurrency(1, wait=True)
 async def add_stream(ctx, *args: int):
 
-    with open(stream_path, 'r+') as f: stream = json.load(f)
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     # Pre-add before the tournament goes underway - BE CAREFUL!
     if tournoi["statut"] == "pending":
-        for arg in args: stream.append(arg)
+        for arg in args: stream[ctx.author.id]["queue"].append(arg)
         with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
         await ctx.message.add_reaction("☑️")
         return
 
+    # Otherwise we should check if the sets are open
     try:
         bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=('open', 'pending'))
     except HTTPError:
@@ -956,8 +983,8 @@ async def add_stream(ctx, *args: int):
 
     for arg in args:
         for match in bracket:
-            if (match["suggested_play_order"] == arg) and (match["underway_at"] == None) and (arg not in stream):
-                stream.append(arg)
+            if (match["suggested_play_order"] == arg) and (match["underway_at"] == None) and (not is_queued_for_stream(arg)):
+                stream[ctx.author.id]["queue"].append(arg)
                 break
 
     with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
@@ -965,15 +992,15 @@ async def add_stream(ctx, *args: int):
 
 
 ### Enlever un set de la stream queue
-@bot.command(name='rmstream')
-@commands.has_role(to_id)
+@bot.command(name='rmstream', aliases=['rs'])
+@commands.has_role(streamer_id)
 @commands.check(tournament_is_underway_or_pending)
+@commands.check(is_streaming)
 async def remove_stream(ctx, *args: int):
-
-    with open(stream_path, 'r+') as f: stream = json.load(f)
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
 
     try:
-        for arg in args: stream.remove(arg)
+        for arg in args: stream[ctx.author.id]["queue"].remove(arg)
     except ValueError:
         await ctx.message.add_reaction("⚠️")
     else:
@@ -982,13 +1009,14 @@ async def remove_stream(ctx, *args: int):
 
 
 ### Infos stream
-@bot.command(name='stream')
-@commands.has_role(to_id)
+@bot.command(name='mystream', aliases=['ms'])
+@commands.has_role(streamer_id)
 @commands.check(tournament_is_underway_or_pending)
+@commands.check(is_streaming)
 @commands.max_concurrency(1, wait=True)
 async def list_stream(ctx):
 
-    with open(stream_path, 'r+') as f: stream = json.load(f)
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
@@ -998,10 +1026,10 @@ async def list_stream(ctx):
         await ctx.message.add_reaction("🕐")
         return
 
-    msg = f":information_source: Codes d'accès au stream :\n{get_access_stream()}\n"
+    msg = f":information_source: Codes d'accès au stream **{stream[ctx.author.id]['channel']}** :\n{get_access_stream(stream[ctx.author.id]['access'])}\n"
 
     try:
-        match = bracket[[x["suggested_play_order"] for x in bracket].index(tournoi["on_stream"])]
+        match = bracket[[x["suggested_play_order"] for x in bracket].index(stream[ctx.author.id]['on_stream'])]
     except KeyError: # bracket is empty
         msg += ":stop_button: Le tournoi n'est probablement pas en cours.\n"
     except ValueError: # on stream not found
@@ -1011,11 +1039,11 @@ async def list_stream(ctx):
             if participants[joueur]["challonge"] == match["player1_id"]: player1 = participants[joueur]['display_name']
             if participants[joueur]["challonge"] == match["player2_id"]: player2 = participants[joueur]['display_name']
 
-        msg += f":arrow_forward: **Set on stream actuel** *({tournoi['on_stream']})* : **{player1}** vs **{player2}**\n"
+        msg += f":arrow_forward: **Set on stream actuel** *({match['suggested_play_order']})* : **{player1}** vs **{player2}**\n"
 
     list_stream = ""
 
-    for order in stream:
+    for order in stream[ctx.author.id]['queue']:
         for match in bracket:
             if match["suggested_play_order"] == order:
 
@@ -1040,41 +1068,45 @@ async def list_stream(ctx):
 ### Appeler les joueurs on stream
 async def call_stream(guild, bracket):
 
-    with open(stream_path, 'r+') as f: stream = json.load(f)
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    # If current on stream set is still open, then it's not finished
-    if any(x['suggested_play_order'] == tournoi["on_stream"] for x in bracket): return
+    for streamer in stream:
 
-    try:
-        match = bracket[[x["suggested_play_order"] for x in bracket].index(stream[0])]
-    except (IndexError, ValueError): # stream queue is empty / match could be pending
-        return
-    else: # wait for the match to be marked as underway
-        if match["underway_at"] == None: return
+        # If current on stream set is still open, then it's not finished
+        if any(x['suggested_play_order'] == stream[streamer]["on_stream"] for x in bracket): continue
 
-    for joueur in participants:
-        if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
-        if participants[joueur]["challonge"] == match["player2_id"]: player2 = guild.get_member(joueur)
+        try:
+            match = bracket[[x["suggested_play_order"] for x in bracket].index(stream[streamer]["queue"][0])]
+        except (IndexError, ValueError): # stream queue is empty / match could be pending
+            continue
+        else: # wait for the match to be marked as underway
+            if match["underway_at"] == None: continue
 
-    gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
+        for joueur in participants:
+            if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
+            if participants[joueur]["challonge"] == match["player2_id"]: player2 = guild.get_member(joueur)
 
-    if gaming_channel == None:
-        dm_msg = f"C'est ton tour de passer on stream ! Voici les codes d'accès :\n{get_access_stream()}"
-        await player1.send(dm_msg)
-        await player2.send(dm_msg)
-    else:
-        await gaming_channel.send(f"<@{player1.id}> <@{player2.id}>\n" # ping them
-                                  f":clapper: **C'est votre tour de passer on stream !** Voici les codes d'accès :\n{get_access_stream()}")
+        gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
 
-    await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} : **{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
+        if gaming_channel == None:
+            dm_msg = f"C'est ton tour de passer on stream ! Voici les codes d'accès :\n{get_access_stream(stream[streamer]['access'])}"
+            await player1.send(dm_msg)
+            await player2.send(dm_msg)
+        else:
+            await gaming_channel.send(f"<@{player1.id}> <@{player2.id}>\n" # ping them
+                                      f":clapper: Vous pouvez passer on stream sur la chaîne **{stream[streamer]['channel']}** ! "
+                                      f"Voici les codes d'accès :\n{get_access_stream(stream[streamer]['access'])}")
 
-    tournoi["on_stream"] = match["suggested_play_order"]
-    with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+        await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} chez **{stream[streamer]['channel']}** : "
+                                                      f"**{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
 
-    while match["suggested_play_order"] in stream: stream.remove(match["suggested_play_order"])
-    with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
+        stream[streamer]["on_stream"] = match["suggested_play_order"]
+
+        while match["suggested_play_order"] in stream[streamer]["queue"]:
+            stream[streamer]["queue"].remove(match["suggested_play_order"])
+
+        with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
 
 
 ### Calculer les rounds à partir desquels un set est top 8 (bracket D.E.)
@@ -1097,13 +1129,12 @@ async def calculate_top8():
 ### Lancer un rappel de matchs
 async def rappel_matches(guild, bracket):
 
-    with open(stream_path, 'r+') as f: stream = json.load(f)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     for match in bracket:
 
-        if (match["underway_at"] != None) and (match["suggested_play_order"] not in stream) and (match["suggested_play_order"] != tournoi["on_stream"]):
+        if (match["underway_at"] != None) and (not is_queued_for_stream(match["suggested_play_order"])) and (not is_on_stream(match["suggested_play_order"])):
 
             debut_set = dateutil.parser.parse(str(match["underway_at"])).replace(tzinfo=None)
 

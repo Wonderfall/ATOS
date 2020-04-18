@@ -36,6 +36,7 @@ discord:
   roles:
     challenger:
     to:
+    streamer:
   emojis:
     logo:
 

@@ -49,6 +49,7 @@ looser_cat_id                       = config["discord"]["categories"]["looser"]
 ### Role IDs
 challenger_id                       = config["discord"]["roles"]["challenger"]
 to_id                               = config["discord"]["roles"]["to"]
+streamer_id                         = config["discord"]["roles"]["streamer"]
 
 ### Custom emojis
 server_logo                         = config["discord"]["emojis"]["logo"]

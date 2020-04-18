@@ -53,3 +53,7 @@ def can_check_in(ctx):
         ])
     except KeyError:
         return False
+
+def is_streaming(ctx):
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
+    return ctx.author.id in stream
