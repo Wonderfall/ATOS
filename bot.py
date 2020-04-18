@@ -929,7 +929,18 @@ async def init_stream(ctx, arg):
         await ctx.message.add_reaction("🔗")
 
 
-@bot.command(name='stream')
+@bot.command(name='stopstream')
+@commands.has_role(streamer_id)
+@commands.check(tournament_is_underway_or_pending)
+@commands.check(is_streaming)
+async def stop_stream(ctx):
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
+    del stream[ctx.author.id]
+    with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
+    await ctx.message.add_reaction("✅")
+
+
+@bot.command(name='stream', aliases=['twitch', 'tv'])
 @commands.check(tournament_is_underway_or_pending)
 async def post_stream(ctx):
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
