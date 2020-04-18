@@ -1415,8 +1415,10 @@ async def on_raw_reaction_remove(event):
 @bot.command(name='help', aliases=['info', 'version'])
 @commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_help(ctx):
-    await ctx.send(f"{help_text}\n**{name} {version}** - *Made by {author} with* :heart:")
+    await ctx.send(f"**{name} {version}** - *Made by {author} with* :heart:\n{help_text}\n")
+    if challenger_id in [y.id for y in ctx.author.roles]: await ctx.send(challenger_help_text) # admin help
     if to_id in [y.id for y in ctx.author.roles]: await ctx.send(admin_help_text) # admin help
+    if streamer_id in [y.id for y in ctx.author.roles]: await ctx.send(streamer_help_text) # streamer help
 
 
 ### Desync message

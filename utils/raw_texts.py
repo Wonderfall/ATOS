@@ -11,10 +11,15 @@ Enfin, amuse-toi bien ! *Tu peux obtenir une liste de commandes avec la commande
 """
 
 help_text=f"""
-:cd: **Commandes user :**
-:white_small_square: `{bot_prefix}help` : c'est la commande que tu viens de rentrer.
+:cd: **Commandes membre :**
+:white_small_square: `{bot_prefix}help` : affiche des commandes selon le statut du membre *(simple, joueur, admin, streamer)*.
 :white_small_square: `{bot_prefix}bracket` : obtenir le lien du bracket en cours.
+:white_small_square: `{bot_prefix}stream` : obtenir le ou les liens de stream du tournoi en cours.
+:white_small_square: `{bot_prefix}desync` : obtenir une notice d'aide en cas de desync sur Dolphin Netplay.
+:white_small_square: `{bot_prefix}buffer` : calcule le minimum buffer optimal pour Dolphin Netplay *(paramètre : ping)*.
+"""
 
+challenger_help_text=f"""
 :video_game: **Commandes joueur :**
 :white_small_square: `{bot_prefix}dq` : DQ du tournoi après que celui-ci ait commencé.
 :white_small_square: `{bot_prefix}forfeit` : abandonner son match en cours, pour passer de winner à looser.
@@ -22,8 +27,6 @@ help_text=f"""
 :white_small_square: `{bot_prefix}win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
 :white_small_square: `{bot_prefix}stages` : obtenir la stagelist légale actuelle selon le jeu du tournoi actuel.
 :white_small_square: `{bot_prefix}lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
-:white_small_square: `{bot_prefix}desync` : obtenir une notice d'aide en cas de desync sur Dolphin Netplay.
-:white_small_square: `{bot_prefix}buffer` : calcule le minimum buffer optimal pour Dolphin Netplay *(paramètre : ping)*.
 """
 
 admin_help_text=f"""
@@ -32,9 +35,13 @@ admin_help_text=f"""
 :white_small_square: `{bot_prefix}rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
 :white_small_square: `{bot_prefix}add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
 :white_small_square: `{bot_prefix}start/end` : démarrer/finaliser le tournoi enregistré.
+"""
 
+streamer_help_text=f"""
 :tv: **Commandes streamer :**
-:white_small_square: `{bot_prefix}stream` : obtenir les informations relatives au stream (IDs, on stream, queue).
+:white_small_square: `{bot_prefix}initstream` : initialiser son stream pour le tournoi actuel *(paramètre : lien Twitch)*.
+:white_small_square: `{bot_prefix}stopstream` : arrêter son stream pour le tournoi actuel.
+:white_small_square: `{bot_prefix}mystream` : obtenir les informations relatives au stream (IDs, on stream, queue).
 :white_small_square: `{bot_prefix}setstream` : mettre en place les codes d'accès au stream *(paramètres jeu-dépendant)*.
 :white_small_square: `{bot_prefix}addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
 :white_small_square: `{bot_prefix}rmstream` : retirer un set de la stream queue *(paramètre : n° | liste de n°)*.
