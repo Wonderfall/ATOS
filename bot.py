@@ -84,8 +84,6 @@ async def init_tournament(url_or_id):
         "début_tournoi": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None),
         "début_check-in": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None) - datetime.timedelta(hours = 1),
         "fin_check-in": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None) - datetime.timedelta(minutes = 10),
-        "on_stream": None,
-        "stream": ["N/A", "N/A"],
         "warned": [],
         "timeout": []
     }
