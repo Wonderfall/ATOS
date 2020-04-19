@@ -708,6 +708,7 @@ async def underway_tournament():
     await launch_matches(guild, bracket)
     await call_stream(guild, bracket)
     await rappel_matches(guild, bracket)
+    await clean_channels(guild, bracket)
 
 
 ### Gestion des scores
@@ -797,24 +798,24 @@ async def score_match(ctx, arg):
         if gaming_channel != None:
             await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[ctx.author.id]['display_name']}** gagne **{og_score}** !\n"
                                       f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*\n"
-                                      f"*Note : ce channel sera automatiquement supprimé dans 10 minutes.*")
-
-            scheduler.add_job(
-                scheduled_channel_removal,
-                id = f'remove {gaming_channel.name}',
-                args = [gaming_channel.name],
-                run_date = datetime.datetime.now() + datetime.timedelta(minutes=10)
-            )
+                                      f"*Note : ce channel sera automatiquement supprimé 5 minutes à partir de la dernière activité.*")
 
 
-# Scheduled channel removal
-async def scheduled_channel_removal(channel_name):
-    guild = bot.get_guild(id=guild_id)
-    gaming_channel = discord.utils.get(guild.text_channels, name=channel_name)
-    try:
-        await gaming_channel.delete(reason="Scheduled channel removal")
-    except (discord.NotFound, discord.HTTPException):
-        pass
+### Clean channels
+async def clean_channels(guild, bracket):
+    for category, channels in guild.by_category():
+    	# Category must be a tournament category
+    	if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
+    		for channel in channels:
+    			# Channel names correspond to a suggested play order
+    			if int(channel.name) not in [x['suggested_play_order'] for x in bracket]:
+    				last_message = await channel.fetch_message(channel.last_message_id)
+    				# Remove the channel if the last message is more than 5 minutes old
+    				if datetime.datetime.now() - last_message.created_at > datetime.timedelta(minutes = 5):
+    					try:
+    					    await channel.delete()
+    					except (discord.NotFound, discord.HTTPException):
+    						pass
 
 
 ### Forfeit
