@@ -644,9 +644,8 @@ async def purge_channels():
                     async for message in channel.history():
                         await message.delete()
 
-            if category.id in [winner_cat_id, looser_cat_id]:
-                for channel in channels:
-                    await channel.delete()
+            if category.name.lower() in ["winner bracket", "looser bracket"]:
+                await category.delete()
 
 
 ### Affiche le bracket en cours
@@ -867,6 +866,24 @@ async def forfeit_match(ctx):
         await ctx.message.add_reaction("✅")
 
 
+### Get and return a category
+async def get_available_category(match_round):
+
+    guild = bot.get_guild(id=guild_id)
+    desired_cat = 'winner bracket' if match_round > 0 else 'looser bracket'
+
+    for category, channels in guild.by_category():
+        if category != None and category.name.lower() == desired_cat and len(channels) < 50:
+            return category
+
+    else:
+        return await guild.create_category(
+            name=desired_cat,
+            reason='Since no category was available, a new one was created',
+            position=guild.get_channel(tournoi_cat_id).position + 1
+        )
+
+
 ### Lancer matchs ouverts
 async def launch_matches(guild, bracket):
 
@@ -896,7 +913,7 @@ async def launch_matches(guild, bracket):
                         player1: discord.PermissionOverwrite(read_messages=True),
                         player2: discord.PermissionOverwrite(read_messages=True)
                     },
-                    category = discord.Object(id=(winner_cat_id if match["round"] > 0 else looser_cat_id)),
+                    category = await get_available_category(match['round']),
                     topic = "Channel temporaire pour un set.",
                     reason = f"Lancement du set n°{match['suggested_play_order']}"
                 )

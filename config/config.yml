@@ -3,9 +3,9 @@ system:
   debug: True
   auto_mode: False
   bulk_mode: False
-  use_guild_name: False
-  greet_new_members: False
-  manage_game_roles: False
+  use_guild_name: True
+  greet_new_members: True
+  manage_game_roles: True
   language: fr_FR
 
 paths:
@@ -37,8 +37,6 @@ discord:
     to:
   categories:
     tournoi:
-    winner:
-    looser:
   roles:
     challenger:
     to:
