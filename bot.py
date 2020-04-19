@@ -804,18 +804,18 @@ async def score_match(ctx, arg):
 ### Clean channels
 async def clean_channels(guild, bracket):
     for category, channels in guild.by_category():
-    	# Category must be a tournament category
-    	if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
-    		for channel in channels:
-    			# Channel names correspond to a suggested play order
-    			if int(channel.name) not in [x['suggested_play_order'] for x in bracket]:
-    				last_message = await channel.fetch_message(channel.last_message_id)
-    				# Remove the channel if the last message is more than 5 minutes old
-    				if datetime.datetime.now() - last_message.created_at > datetime.timedelta(minutes = 5):
-    					try:
-    					    await channel.delete()
-    					except (discord.NotFound, discord.HTTPException):
-    						pass
+        # Category must be a tournament category
+        if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
+            for channel in channels:
+                # Channel names correspond to a suggested play order
+                if int(channel.name) not in [x['suggested_play_order'] for x in bracket]:
+                    last_message = await channel.fetch_message(channel.last_message_id)
+                    # Remove the channel if the last message is more than 5 minutes old
+                    if datetime.datetime.now() - last_message.created_at > datetime.timedelta(minutes = 5):
+                        try:
+                            await channel.delete()
+                        except (discord.NotFound, discord.HTTPException):
+                            pass
 
 
 ### Forfeit
