@@ -54,6 +54,8 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
 
+    if greet_new_members == False: return
+
     message = random.choice([
         f"<@{member.id}> joins the battle!",
         f"Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>.",
@@ -1427,7 +1429,8 @@ async def on_raw_reaction_add(event):
         if event.message_id == tournoi["annonce_id"]:
             await inscrire(event.member) # available for REACTION_ADD only
 
-    elif (event.channel_id == roles_channel_id): await attribution_role(event)
+    elif (manage_game_roles == True) and (event.channel_id == roles_channel_id):
+        await attribution_role(event)
 
 
 ### À chaque suppression de réaction
@@ -1442,7 +1445,8 @@ async def on_raw_reaction_remove(event):
         if event.message_id == tournoi["annonce_id"]:
             await desinscrire(bot.get_guild(id=guild_id).get_member(event.user_id)) # event.member not available for REACTION_REMOVE
 
-    elif (event.channel_id == roles_channel_id): await retirer_role(event)
+    elif (manage_game_roles == True) and (event.channel_id == roles_channel_id):
+        await retirer_role(event)
 
 
 ### Help message

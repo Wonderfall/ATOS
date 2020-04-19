@@ -20,14 +20,12 @@ language                            = config["system"]["language"]
 ### Discord prefix
 bot_prefix                          = config["discord"]["prefix"]
 
-### Auto-mode
+### System preferences
 auto_mode                           = config["system"]["auto_mode"]
-
-### Bulk-mode
 bulk_mode                           = config["system"]["bulk_mode"]
-
-### Use guild name?
 use_guild_name                      = config["system"]["use_guild_name"]
+greet_new_members                   = config["system"]["greet_new_members"]
+manage_game_roles                   = config["system"]["manage_game_roles"]
 
 #### Discord IDs
 guild_id                            = config["discord"]["guild"]

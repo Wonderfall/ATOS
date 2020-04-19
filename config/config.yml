@@ -4,6 +4,8 @@ system:
   auto_mode: False
   bulk_mode: False
   use_guild_name: False
+  greet_new_members: False
+  manage_game_roles: False
   language: fr_FR
 
 paths:
