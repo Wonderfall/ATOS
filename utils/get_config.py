@@ -12,6 +12,7 @@ waiting_list_path                   = config["paths"]["waiting_list"]
 stream_path                         = config["paths"]["stream"]
 stagelist_path                      = config["paths"]["stagelist"]
 auto_mode_path                      = config["paths"]["auto_mode"]
+ranking_path                        = config["paths"]["ranking"]
 
 ### Locale
 language                            = config["system"]["language"]
@@ -21,6 +22,12 @@ bot_prefix                          = config["discord"]["prefix"]
 
 ### Auto-mode
 auto_mode                           = config["system"]["auto_mode"]
+
+### Bulk-mode
+bulk_mode                           = config["system"]["bulk_mode"]
+
+### Use guild name?
+use_guild_name                      = config["system"]["use_guild_name"]
 
 #### Discord IDs
 guild_id                            = config["discord"]["guild"]
@@ -36,6 +43,7 @@ queue_channel_id                    = config["discord"]["channels"]["queue"]
 tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
 resultats_channel_id                = config["discord"]["channels"]["resultats"]
 roles_channel_id                    = config["discord"]["channels"]["roles"]
+to_channel_id                       = config["discord"]["channels"]["to"]
 
 ### Info, non-interactive channels
 deroulement_channel_id              = config["discord"]["channels"]["deroulement"]

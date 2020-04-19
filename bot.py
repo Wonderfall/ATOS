@@ -3,6 +3,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
 from requests.exceptions import HTTPError
+from urllib import error
+from pathlib import Path
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
@@ -11,6 +13,7 @@ from utils.stream import is_on_stream, is_queued_for_stream
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
 from utils.http_retry import async_http_retry
+from utils.seeding import get_ranking_csv, seed_participants
 
 # Import configuration (variables only)
 from utils.get_config import *
@@ -90,6 +93,17 @@ async def init_tournament(url_or_id):
 
     with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
     if (datetime.datetime.now() > tournoi["début_tournoi"]) or (tournoi['game'] not in stagelist): return
+
+    if bulk_mode == True:
+        try:
+            await get_ranking_csv()
+        except (KeyError, error.URLError, error.HTTPError):
+            await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **données de ranking introuvables**.")
+            return
+        else:
+            tournoi["bulk_mode"] = True
+    else:
+        tournoi["bulk_mode"] = False
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
@@ -268,6 +282,12 @@ async def end_tournament(ctx):
     with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
+    try:
+        Path(ranking_path).unlink()
+        Path(f'{participants_path}.bak').unlink()
+    except FileNotFoundError:
+        pass
+
     await bot.change_presence(activity=discord.Game(version))
 
 
@@ -334,7 +354,7 @@ async def annonce_inscription():
                f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
                f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
                f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-               f":white_small_square: __Bracket__ : {tournoi['url']}\n"
+               f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'rendu disponible peu de temps avant le début du tournoi'}\n"
                f":white_small_square: __Format__ : singles, double élimination (<#{stagelist[tournoi['game']]['ruleset']}>)\n\n"
                "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
@@ -365,10 +385,18 @@ async def inscrire(member):
     if (member.id not in participants) and (len(participants) < tournoi['limite']):
 
         participants[member.id] = {
-            "display_name" : member.display_name,
-            "challonge" : (await async_http_retry(challonge.participants.create, tournoi["id"], member.display_name))['id'],
-            "checked_in" : False
+            "display_name": member.display_name if use_guild_name else str(member),
+            "checked_in": False
         }
+
+        if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_check-in"]:
+            participants[member.id]["challonge"] = (
+                await async_http_retry(
+                    challonge.participants.create,
+                    tournoi["id"],
+                    participants[member.id]["display_name"]
+                )
+            )['id']
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
             participants[member.id]["checked_in"] = True
@@ -392,7 +420,7 @@ async def inscrire(member):
             tournoi['waiting_list_id'] = waiting_list_msg.id
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-        waiting_list[member.id] = { "display_name" : member.display_name }
+        waiting_list[member.id] = { "display_name": member.display_name if use_guild_name else str(member) }
 
         with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
         await update_waiting_list()
@@ -428,7 +456,8 @@ async def desinscrire(member):
 
     if member.id in participants:
 
-        await async_http_retry(challonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
+        if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_check-in"]:
+            await async_http_retry(challonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
             try:
@@ -471,7 +500,6 @@ async def desinscrire(member):
                 with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
 
                 await update_waiting_list()
-
 
     elif member.id in waiting_list:
 
@@ -563,11 +591,12 @@ async def end_check_in():
 
     for inscrit in list(participants):
         if participants[inscrit]["checked_in"] == False:
-            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[inscrit]['challonge'])
+            if tournoi["bulk_mode"] == False:
+                await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[inscrit]['challonge'])
             to_dq = guild.get_member(inscrit)
             try:
                 await to_dq.remove_roles(guild.get_role(challenger_id))
-                await to_dq.send(f"Tu as été DQ du tournoi {tournoi['name']} car tu n'as pas check-in à temps, désolé !")
+                await to_dq.send(f"Tu as été retiré(e) du tournoi {tournoi['name']} car tu n'as pas check-in à temps, désolé !")
             except (discord.HTTPException, discord.Forbidden):
                 pass
             del participants[inscrit]
@@ -577,6 +606,9 @@ async def end_check_in():
 
     await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé.** Les personnes n'ayant pas check-in ont été retirées du bracket. Contactez les TOs en cas de besoin.")
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs en cas de besoin.")
+
+    if tournoi["bulk_mode"] == True:
+        await seed_participants()
 
 
 ### Prise en charge du check-in et check-out
@@ -1316,7 +1348,7 @@ async def annonce_resultats():
         "Ce fut un plaisir en tant que bot d'aider à la gestion de ce tournoi et d'assister à vos merveileux sets."
     ])
     
-    classement = (f"{server_logo} **__Résultats du {tournoi['name']}__**\n\n"
+    classement = (f"{server_logo} **__Résultats du tournoi {tournoi['name']}__**\n\n"
                   f":trophy: **1er** : **{resultats[0][1]}**\n"
                   f":second_place: **2e** : {resultats[1][1]}\n"
                   f":third_place: **3e** : {resultats[2][1]}\n"

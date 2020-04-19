@@ -1,19 +1,25 @@
 Game 1:
   ruleset:
-  role:
-  role_1v1:
+#  role:
+#  role_1v1:
   icon:
-  icon_1v1:
+#  icon_1v1:
+#  ranking:
+#    league_name:
+#    league_id:
   starters:
     - foo
 
-Game 2:
-  ruleset:
-  role:
-  role_1v1:
-  icon:
-  icon_1v1:
-  starters:
-    - foo
-  counterpicks:
-    - bar
+#Game 2:
+#  ruleset:
+#  role:
+#  role_1v1:
+#  icon:
+#  icon_1v1:
+#  ranking:
+#    league_name:
+#    league_id:
+#  starters:
+#    - foo
+#  counterpicks:
+#    - bar

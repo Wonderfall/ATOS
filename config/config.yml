@@ -2,6 +2,8 @@
 system:
   debug: True
   auto_mode: False
+  bulk_mode: False
+  use_guild_name: False
   language: fr_FR
 
 paths:
@@ -9,6 +11,7 @@ paths:
   participants: data/participants.json
   waiting_list: data/waiting_list.json
   stream: data/stream.json
+  ranking: data/ranking.csv
   stagelist: config/stagelist.yml
   auto_mode: config/auto_mode.yml
 
@@ -29,6 +32,7 @@ discord:
     faq:
     resultats:
     roles:
+    to:
   categories:
     tournoi:
     winner:
