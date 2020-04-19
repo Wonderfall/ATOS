@@ -10,11 +10,11 @@ from statistics import median
 
 
 async def get_ranking_csv():
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    url = (f"https://braacket.com/league/{stagelist[tournoi['game']]['ranking']['league_name']}/ranking/"
-           f"{stagelist[tournoi['game']]['ranking']['league_id']}?rows=200&export=csv")
+    url = (f"https://braacket.com/league/{gamelist[tournoi['game']]['ranking']['league_name']}/ranking/"
+           f"{gamelist[tournoi['game']]['ranking']['league_id']}?rows=200&export=csv")
 
     await async_http_retry(request.urlretrieve, url, ranking_path)
 

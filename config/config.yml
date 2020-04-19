@@ -14,7 +14,7 @@ paths:
   waiting_list: data/waiting_list.json
   stream: data/stream.json
   ranking: data/ranking.csv
-  stagelist: config/stagelist.yml
+  gamelist: config/gamelist.yml
   auto_mode: config/auto_mode.yml
 
 discord:

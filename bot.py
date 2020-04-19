@@ -93,8 +93,8 @@ async def init_tournament(url_or_id):
         "timeout": []
     }
 
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
-    if (datetime.datetime.now() > tournoi["début_tournoi"]) or (tournoi['game'] not in stagelist): return
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
+    if (datetime.datetime.now() > tournoi["début_tournoi"]) or (tournoi['game'] not in gamelist): return
 
     if bulk_mode == True:
         try:
@@ -213,7 +213,7 @@ async def start_tournament(ctx):
     await calculate_top8()
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé ! Voici le bracket : {tournoi['url']}\n"
                                                    f":white_small_square: Vous pouvez y accéder à tout moment avec la commande `!bracket`.\n"
@@ -235,7 +235,7 @@ async def start_tournament(ctx):
 
     tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n"
                        f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
-                       f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{stagelist[tournoi['game']]['ruleset']}>.\n"
+                       f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
                        f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
                        f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
                        f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
@@ -243,7 +243,7 @@ async def start_tournament(ctx):
                        f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
     if tournoi["game"] == "Project+":
-        tournoi_annonce += f"\n\n{stagelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `!desync` pour résoudre la situation."
+        tournoi_annonce += f"\n\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `!desync` pour résoudre la situation."
 
     await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
@@ -350,14 +350,14 @@ async def reload_tournament():
 ### Annonce l'inscription
 async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    annonce = (f"{server_logo} **{tournoi['name']}** - {stagelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
+    annonce = (f"{server_logo} **{tournoi['name']}** - {gamelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
                f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
                f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
                f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
                f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'rendu disponible peu de temps avant le début du tournoi'}\n"
-               f":white_small_square: __Format__ : singles, double élimination (<#{stagelist[tournoi['game']]['ruleset']}>)\n\n"
+               f":white_small_square: __Format__ : singles, double élimination (<#{gamelist[tournoi['game']]['ruleset']}>)\n\n"
                "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
 
@@ -371,7 +371,7 @@ async def annonce_inscription():
 
     await annonce_msg.add_reaction("✅")
 
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! <@&{stagelist[tournoi['game']]['role']}>\n"
+    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! <@&{gamelist[tournoi['game']]['role']}>\n"
                                                    f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
 
     await purge_channels()
@@ -911,17 +911,17 @@ async def launch_matches(guild, bracket):
             else:
                 gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
 
-                with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+                with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
                 gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
-                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{stagelist[tournoi['game']]['ruleset']}> (doit être lu au préalable).\n"
+                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}> (doit être lu au préalable).\n"
                                           f":white_small_square: La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
                                           f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
                                           f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
 
                 if tournoi["game"] == "Project+":
-                    gaming_channel_annonce += f"{stagelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer ping`.\n"
+                    gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer ping`.\n"
 
                 if is_top8(match["round"]):
                     gaming_channel_annonce += ":fire: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
@@ -1277,14 +1277,14 @@ async def rappel_matches(guild, bracket):
 @commands.check(tournament_is_underway_or_pending)
 async def get_stagelist(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     msg = f":map: **Stages légaux pour {tournoi['game']} :**\n:white_small_square: __Starters__ :\n"
-    for stage in stagelist[tournoi['game']]['starters']: msg += f"- {stage}\n"
+    for stage in gamelist[tournoi['game']]['starters']: msg += f"- {stage}\n"
 
-    if 'counterpicks' in stagelist[tournoi['game']]:
+    if 'counterpicks' in gamelist[tournoi['game']]:
         msg += ":white_small_square: __Counterpicks__ :\n"
-        for stage in stagelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
+        for stage in gamelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
 
     await ctx.send(msg)
 
@@ -1295,12 +1295,12 @@ async def get_stagelist(ctx):
 @commands.cooldown(1, 30, type=commands.BucketType.channel)
 async def send_lag_text(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     msg = lag_text
 
     if tournoi['game'] == 'Project+':
-        msg += (f"\n{stagelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
+        msg += (f"\n{gamelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
                 ":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
                 "- Baisser la résolution interne dans les paramètres graphiques.\n"
                 "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
@@ -1328,7 +1328,7 @@ async def calculate_buffer(ctx, arg: int):
 async def annonce_resultats():
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     participants, resultats = await async_http_retry(challonge.participants.index, tournoi["id"]), []
 
@@ -1358,7 +1358,7 @@ async def annonce_resultats():
                   f":reminder_ribbon: **5e** : {fifth[0]} / {fifth[1]}\n"
                   f":reminder_ribbon: **7e** : {seventh[0]} / {seventh[1]}\n\n"
                   f":bar_chart: {len(participants)} entrants\n"
-                  f"{stagelist[tournoi['game']]['icon']} {tournoi['game']}\n"
+                  f"{gamelist[tournoi['game']]['icon']} {tournoi['game']}\n"
                   f":link: **Bracket :** {tournoi['url']}\n\n"
                   f"{ending}")
     
@@ -1367,12 +1367,12 @@ async def annonce_resultats():
 
 ### Ajouter un rôle
 async def attribution_role(event):
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    for game in stagelist:
+    for game in gamelist:
 
-        if event.emoji.name == re.search(r'\:(.*?)\:', stagelist[game]['icon']).group(1):
-            role = event.member.guild.get_role(stagelist[game]['role'])
+        if event.emoji.name == re.search(r'\:(.*?)\:', gamelist[game]['icon']).group(1):
+            role = event.member.guild.get_role(gamelist[game]['role'])
 
             try:
                 await event.member.add_roles(role)
@@ -1380,8 +1380,8 @@ async def attribution_role(event):
             except (discord.HTTPException, discord.Forbidden):
                 pass
 
-        elif event.emoji.name == stagelist[game]['icon_1v1']:
-            role = event.member.guild.get_role(stagelist[game]['role_1v1'])
+        elif event.emoji.name == gamelist[game]['icon_1v1']:
+            role = event.member.guild.get_role(gamelist[game]['role_1v1'])
 
             try:
                 await event.member.add_roles(role)
@@ -1392,14 +1392,14 @@ async def attribution_role(event):
 
 ### Enlever un rôle
 async def retirer_role(event):
-    with open(stagelist_path, 'r+') as f: stagelist = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     guild = bot.get_guild(id=guild_id) # due to event.member not being available
 
-    for game in stagelist:
+    for game in gamelist:
 
-        if event.emoji.name == re.search(r'\:(.*?)\:', stagelist[game]['icon']).group(1):
-            role, member = guild.get_role(stagelist[game]['role']), guild.get_member(event.user_id)
+        if event.emoji.name == re.search(r'\:(.*?)\:', gamelist[game]['icon']).group(1):
+            role, member = guild.get_role(gamelist[game]['role']), guild.get_member(event.user_id)
 
             try:
                 await member.remove_roles(role)
@@ -1407,8 +1407,8 @@ async def retirer_role(event):
             except (discord.HTTPException, discord.Forbidden):
                 pass
 
-        elif event.emoji.name == stagelist[game]['icon_1v1']:
-            role, member = guild.get_role(stagelist[game]['role_1v1']), guild.get_member(event.user_id)
+        elif event.emoji.name == gamelist[game]['icon_1v1']:
+            role, member = guild.get_role(gamelist[game]['role_1v1']), guild.get_member(event.user_id)
 
             try:
                 await member.remove_roles(role)

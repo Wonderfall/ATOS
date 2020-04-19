@@ -10,7 +10,7 @@ tournoi_path                        = config["paths"]["tournoi"]
 participants_path                   = config["paths"]["participants"]
 waiting_list_path                   = config["paths"]["waiting_list"]
 stream_path                         = config["paths"]["stream"]
-stagelist_path                      = config["paths"]["stagelist"]
+gamelist_path                       = config["paths"]["gamelist"]
 auto_mode_path                      = config["paths"]["auto_mode"]
 ranking_path                        = config["paths"]["ranking"]
 
