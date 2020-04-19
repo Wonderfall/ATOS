@@ -69,7 +69,7 @@ desync_text=f"""
 
 :two: **Résoudre une desync, les 2 joueurs : **
 :white_small_square: Peuvent avoir recours à une __personne de tierce partie__ pour déterminer le fautif.
-:white_small_square: S'assurent qu'ils ont bien procédé à __l'ECB fix__ tel que décrit dans le tutoriel FR.
+:white_small_square: S'assurent qu'ils ont bien installé **la dernière version en date** de Project+.
 :white_small_square: Vérifient depuis la fenêtre netplay que leur carte SD virtuelle a un hash MD5 égal à :
 ```
 9b1bf61cf106b70ecbc81c1e70aed0f7
