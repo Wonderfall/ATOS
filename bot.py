@@ -857,6 +857,8 @@ async def launch_matches(guild, bracket):
                     str(match["suggested_play_order"]),
                     overwrites = {
                         guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                        guild.get_role(to_id): discord.PermissionOverwrite(read_messages=True),
+                        guild.get_role(streamer_id): discord.PermissionOverwrite(read_messages=True),
                         player1: discord.PermissionOverwrite(read_messages=True),
                         player2: discord.PermissionOverwrite(read_messages=True)
                     },
@@ -1416,7 +1418,7 @@ async def on_raw_reaction_remove(event):
 @commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_help(ctx):
     await ctx.send(f"**{name} {version}** - *Made by {author} with* :heart:\n{help_text}\n")
-    if challenger_id in [y.id for y in ctx.author.roles]: await ctx.send(challenger_help_text) # admin help
+    if challenger_id in [y.id for y in ctx.author.roles]: await ctx.send(challenger_help_text) # challenger help
     if to_id in [y.id for y in ctx.author.roles]: await ctx.send(admin_help_text) # admin help
     if streamer_id in [y.id for y in ctx.author.roles]: await ctx.send(streamer_help_text) # streamer help
 
