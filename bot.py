@@ -645,6 +645,7 @@ async def purge_channels():
                         await message.delete()
 
             if category.name.lower() in ["winner bracket", "looser bracket"]:
+                for channel in channels: await channel.delete()
                 await category.delete()
 
 
