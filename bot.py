@@ -284,11 +284,8 @@ async def end_tournament(ctx):
     with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
-    try:
-        Path(ranking_path).unlink()
-        Path(f'{participants_path}.bak').unlink()
-    except FileNotFoundError:
-        pass
+    for file in list(Path(Path(ranking_path).parent).rglob('*.csv_*')):
+        Path(file).unlink()
 
     await bot.change_presence(activity=discord.Game(f'{name} {version}'))
 
