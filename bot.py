@@ -1356,8 +1356,8 @@ async def annonce_resultats():
         resultats.append((joueur['final_rank'], joueur['display_name']))
 
     resultats.sort()
-    fifth = [y for x, y in resultats if x == 5]
-    seventh = [y for x, y in resultats if x == 7]
+    top5 = [y for x, y in resultats if x == 5]
+    top7 = [y for x, y in resultats if x == 7]
 
     ending = random.choice([
         "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...",
@@ -1371,8 +1371,8 @@ async def annonce_resultats():
                   f":second_place: **2e** : {resultats[1][1]}\n"
                   f":third_place: **3e** : {resultats[2][1]}\n"
                   f":medal: **4e** : {resultats[3][1]}\n"
-                  f":reminder_ribbon: **5e** : {fifth[0]} / {fifth[1]}\n"
-                  f":reminder_ribbon: **7e** : {seventh[0]} / {seventh[1]}\n\n"
+                  f":reminder_ribbon: **5e** : {top5[0]} / {top5[1]}\n"
+                  f":reminder_ribbon: **7e** : {top7[0]} / {top7[1]}\n\n"
                   f":bar_chart: {len(participants)} entrants\n"
                   f"{gamelist[tournoi['game']]['icon']} {tournoi['game']}\n"
                   f":link: **Bracket :** {tournoi['url']}\n\n"
@@ -1470,9 +1470,10 @@ async def on_raw_reaction_remove(event):
 @commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_help(ctx):
     await ctx.send(f"**{name} {version}** - *Made by {author} with* :heart:\n{help_text}\n")
-    if challenger_id in [y.id for y in ctx.author.roles]: await ctx.send(challenger_help_text) # challenger help
-    if to_id in [y.id for y in ctx.author.roles]: await ctx.send(admin_help_text) # admin help
-    if streamer_id in [y.id for y in ctx.author.roles]: await ctx.send(streamer_help_text) # streamer help
+    author_roles = [y.id for y in ctx.author.roles]
+    if challenger_id in author_roles: await ctx.send(challenger_help_text) # challenger help
+    if to_id in author_roles: await ctx.send(admin_help_text) # admin help
+    if streamer_id in author_roles: await ctx.send(streamer_help_text) # streamer help
 
 
 ### Desync message
