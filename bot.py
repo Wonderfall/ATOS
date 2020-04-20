@@ -932,9 +932,9 @@ async def launch_matches(guild, bracket):
 
                 with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-                gaming_channel_annonce = (f":arrow_forward: Ce channel a été créé pour le set suivant : <@{player1.id}> vs <@{player2.id}>\n"
-                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}> (doit être lu au préalable).\n"
-                                          f":white_small_square: La liste des stages légaux à l'heure actuelle est toujours disponible via la commande `!stages`.\n"
+                gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}>\n"
+                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
+                                          f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `!stages`.\n"
                                           f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
                                           f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
@@ -943,10 +943,12 @@ async def launch_matches(guild, bracket):
                     gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer ping`.\n"
 
                 if is_top8(match["round"]):
-                    gaming_channel_annonce += ":fire: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
+                    gaming_channel_annonce += ":five: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
+                else:
+                    gaming_channel_annonce += ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
 
                 if is_queued_for_stream(match["suggested_play_order"]):
-                    gaming_channel_annonce += ":tv: Vous jouerez **on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
+                    gaming_channel_annonce += ":tv: **Vous jouerez on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
 
                 await gaming_channel.send(gaming_channel_annonce)
 

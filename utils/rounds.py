@@ -16,22 +16,22 @@ def nom_round(match_round):
 
     if match_round > 0:
         if match_round == max_round_winner:
-            return "GF"
+            return "Grand Final"
         elif match_round == max_round_winner - 1:
-            return "WF"
+            return "Winners Final"
         elif match_round == max_round_winner - 2:
-            return "WS"
+            return "Winners Semi-Final"
         elif match_round == max_round_winner - 3:
-            return "WQ"
+            return "Winners Quarter-Final"
         else:
-            return f"WR{match_round}"
+            return f"Winners Round {match_round}"
 
     elif match_round < 0:
         if match_round == max_round_looser:
-            return "LF"
+            return "Losers Final"
         elif match_round == max_round_looser + 1:
-            return "LS"
+            return "Losers Semi-Final"
         elif match_round == max_round_looser + 2:
-            return "LQ"
+            return "Losers Quarter-Final"
         else:
-            return f"LR{-match_round}"
+            return f"Losers Round {-match_round}"
