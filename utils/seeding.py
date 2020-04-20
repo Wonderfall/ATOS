@@ -35,7 +35,7 @@ async def seed_participants():
             ranking[row['Player']] = int(row['Points'])
 
     # Determine median Elo (should be around 1500, but let's adjust that)
-    base_elo = median(list(ranking.values()))
+    base_elo = median(list(ranking.values())) if len(ranking) < 200 else min(list(ranking.values()))
 
     # Assign Elo ranking to each player
     for joueur in participants:
