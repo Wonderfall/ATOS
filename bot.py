@@ -1151,13 +1151,15 @@ async def call_stream(guild, bracket):
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
+    play_orders = [match["suggested_play_order"] for match in bracket]
+
     for streamer in stream:
 
         # If current on stream set is still open, then it's not finished
-        if any(x['suggested_play_order'] == stream[streamer]["on_stream"] for x in bracket): continue
+        if stream[streamer]["on_stream"] in play_orders: continue
 
         try:
-            match = bracket[[x["suggested_play_order"] for x in bracket].index(stream[streamer]["queue"][0])]
+            match = bracket[play_orders.index(stream[streamer]["queue"][0])]
         except (IndexError, ValueError): # stream queue is empty / match could be pending
             continue
         else: # wait for the match to be marked as underway
