@@ -46,7 +46,7 @@ async def on_ready():
     print(f"User : {bot.user.name}               ")
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
-    await bot.change_presence(activity=discord.Game(version)) # As of April 2020, CustomActivity is not supported for bots
+    await bot.change_presence(activity=discord.Game(f'{name} {version}')) # As of April 2020, CustomActivity is not supported for bots
     await reload_tournament()
 
 
@@ -117,7 +117,7 @@ async def init_tournament(url_or_id):
     scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
     scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
 
-    await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
+    await bot.change_presence(activity=discord.Game(tournoi['name']))
 
 
 ### Ajouter un tournoi
@@ -290,7 +290,7 @@ async def end_tournament(ctx):
     except FileNotFoundError:
         pass
 
-    await bot.change_presence(activity=discord.Game(version))
+    await bot.change_presence(activity=discord.Game(f'{name} {version}'))
 
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
@@ -298,7 +298,7 @@ async def reload_tournament():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
-        await bot.change_presence(activity=discord.Game(f"{version} • {tournoi['name']}"))
+        await bot.change_presence(activity=discord.Game(tournoi['name']))
     except KeyError:
         print("No tournament had to be reloaded.")
         return
@@ -356,7 +356,7 @@ async def annonce_inscription():
                f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
                f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
                f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-               f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else '*rendu disponible peu de temps avant le début du tournoi*'}\n"
+               f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'disponible peu de temps avant le début du tournoi'}\n"
                f":white_small_square: __Format__ : singles, double élimination, ruleset : <#{gamelist[tournoi['game']]['ruleset']}>\n\n"
                f"Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
                f"*Note : votre **pseudonyme {'sur ce serveur' if use_guild_name else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*")
