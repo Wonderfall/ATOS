@@ -1194,8 +1194,9 @@ async def calculate_top8():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=("open", "pending"))
 
-    tournoi["round_winner_top8"] = max([x["round"] for x in bracket]) - 2
-    tournoi["round_looser_top8"] = min([x["round"] for x in bracket]) + 3
+    rounds = [x["round"] for x in bracket]
+    tournoi["round_winner_top8"] = max(rounds) - 2
+    tournoi["round_looser_top8"] = min(rounds) + 3
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
