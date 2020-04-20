@@ -894,7 +894,7 @@ async def launch_matches(guild, bracket):
 
     sets = ""
 
-    for match in bracket:
+    for match in bracket[:20:]: # "Only" lauch 20 max at once
 
         if match["underway_at"] == None:
 
