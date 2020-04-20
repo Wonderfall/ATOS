@@ -356,10 +356,10 @@ async def annonce_inscription():
                f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
                f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
                f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-               f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'rendu disponible peu de temps avant le début du tournoi'}\n"
-               f":white_small_square: __Format__ : singles, double élimination (<#{gamelist[tournoi['game']]['ruleset']}>)\n\n"
-               "Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
-               "*Notez que votre pseudonyme Discord au moment de l'inscription sera celui utilisé dans le bracket.*")
+               f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else '*rendu disponible peu de temps avant le début du tournoi*'}\n"
+               f":white_small_square: __Format__ : singles, double élimination, ruleset : <#{gamelist[tournoi['game']]['ruleset']}>\n\n"
+               f"Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
+               f"*Note : votre **pseudonyme {'sur ce serveur' if use_guild_name else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*")
 
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
 
@@ -1003,7 +1003,7 @@ async def post_stream(ctx):
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
 
     if len(stream) == 0:
-        await ctx.send(f"<@{ctx.author.id}> Il n'y a pas de stream prévu pour ce tournoi à l'heure actuelle.")
+        await ctx.send(f"<@{ctx.author.id}> Il n'y a pas de stream en cours (ou prévu) pour ce tournoi à l'heure actuelle.")
     
     elif len(stream) == 1:
         await ctx.send(f"<@{ctx.author.id}> https://www.twitch.tv/{stream[next(iter(stream))]['channel']}")
@@ -1054,6 +1054,7 @@ async def add_stream(ctx, *args: int):
         for arg in args: stream[ctx.author.id]["queue"].append(arg)
         with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
         await ctx.message.add_reaction("☑️")
+        await ctx.send(f"<@{ctx.author.id}> Sets ajoutés à la stream queue, toutefois ils n'ont pas été vérifiés, le bracket n'ayant pas commencé.")
         return
 
     # Otherwise we should check if the sets are open
