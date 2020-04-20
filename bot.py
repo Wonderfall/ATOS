@@ -24,7 +24,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.5"
+version = "5.6"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -73,11 +73,15 @@ async def on_member_join(member):
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
 async def init_tournament(url_or_id):
+    with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     try:
         infos = await async_http_retry(challonge.tournaments.show, url_or_id)
     except HTTPError:
         return
+
+    debut_tournoi = dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None)
 
     tournoi = {
         "name": infos["name"],
@@ -86,26 +90,36 @@ async def init_tournament(url_or_id):
         "id": infos["id"],
         "limite": infos["signup_cap"],
         "statut": infos["state"],
-        "début_tournoi": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None),
-        "début_check-in": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None) - datetime.timedelta(hours = 1),
-        "fin_check-in": dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None) - datetime.timedelta(minutes = 10),
+        "début_tournoi": debut_tournoi,
+        "début_check-in": debut_tournoi - datetime.timedelta(minutes = preferences['check_in_opening']),
+        "fin_check-in": debut_tournoi - datetime.timedelta(minutes = preferences['check_in_closing']),
+        "fin_inscription": debut_tournoi - datetime.timedelta(minutes = preferences['inscriptions_closing']),
+        "use_guild_name": preferences['use_guild_name'],
+        "bulk_mode": preferences['bulk_mode'],
         "warned": [],
         "timeout": []
     }
 
-    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
-    if (datetime.datetime.now() > tournoi["début_tournoi"]) or (tournoi['game'] not in gamelist): return
+    # Checks
+    if datetime.datetime.now() > tournoi["début_check-in"]:
+        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : trop tard pour ce tournoi.")
+        return
 
-    if bulk_mode == True:
+    if tournoi['game'] not in gamelist:
+        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : jeu introuvable dans la gamelist.")
+        return
+
+    if not (tournoi["début_check-in"] < tournoi["fin_check-in"] < tournoi["fin_inscription"] < tournoi["début_tournoi"]):
+        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : conflit des temps de check-in et d'inscriptions.")
+        return
+
+    if tournoi['bulk_mode'] == True:
         try:
-            await get_ranking_csv()
+            await get_ranking_csv(tournoi)
         except (KeyError, error.URLError, error.HTTPError):
-            await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **données de ranking introuvables**.")
+            await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **données de ranking introuvables**.\n"
+                                                      f"*Désactivez le bulk mode avec `!set bulk_mode off` si vous ne souhaitez pas utiliser de ranking.*")
             return
-        else:
-            tournoi["bulk_mode"] = True
-    else:
-        tournoi["bulk_mode"] = False
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
@@ -116,6 +130,7 @@ async def init_tournament(url_or_id):
 
     scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
     scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
+    scheduler.add_job(end_inscription, id='end_inscription', run_date=tournoi["fin_inscription"], replace_existing=True)
 
     await bot.change_presence(activity=discord.Game(tournoi['name']))
 
@@ -146,13 +161,14 @@ async def setup_tournament(ctx, arg):
 async def auto_setup_tournament():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(auto_mode_path, 'r+') as f: tournaments = yaml.full_load(f)
+    with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
 
     #  Auto-mode won't run if at least one of these conditions is met :
-    #    - It's turned off in config.yml (default)
+    #    - It's turned off in preferences.yml
     #    - A tournament is already initialized
     #    - It's "night" time
 
-    if (auto_mode != True) or (tournoi != {}) or (not 10 <= datetime.datetime.now().hour <= 22): return
+    if (preferences['auto_mode'] != True) or (tournoi != {}) or (not 10 <= datetime.datetime.now().hour <= 22): return
 
     for tournament in tournaments:
 
@@ -173,7 +189,7 @@ async def auto_setup_tournament():
             )
 
             # If the tournament is supposed to be in less than 36 hours, let's go !
-            if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = 36):
+            if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = preferences['inscriptions_opening']):
 
                 new_tournament = await async_http_retry(
                     challonge.tournaments.create,
@@ -201,7 +217,7 @@ async def auto_setup_tournament():
 async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    if datetime.datetime.now() > tournoi["fin_check-in"]:
+    if datetime.datetime.now() > tournoi["fin_inscription"]:
         await async_http_retry(challonge.tournaments.start, tournoi["id"])
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
@@ -287,6 +303,9 @@ async def end_tournament(ctx):
     for file in list(Path(Path(ranking_path).parent).rglob('*.csv_*')):
         Path(file).unlink()
 
+    for file in list(Path(Path(participants_path).parent).rglob('*.bak')):
+        Path(file).unlink()
+
     await bot.change_presence(activity=discord.Game(f'{name} {version}'))
 
 
@@ -307,6 +326,7 @@ async def reload_tournament():
     elif tournoi["statut"] == "pending":
         scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
         scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
+        scheduler.add_job(end_inscription, id='end_inscription', run_date=tournoi["fin_inscription"], replace_existing=True)
 
         if tournoi["début_check-in"] < datetime.datetime.now() < tournoi["fin_check-in"]:
             scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
@@ -356,7 +376,7 @@ async def annonce_inscription():
                f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'disponible peu de temps avant le début du tournoi'}\n"
                f":white_small_square: __Format__ : singles, double élimination, ruleset : <#{gamelist[tournoi['game']]['ruleset']}>\n\n"
                f"Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
-               f"*Note : votre **pseudonyme {'sur ce serveur' if use_guild_name else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*")
+               f"*Note : votre **pseudonyme {'sur ce serveur' if tournoi['use_guild_name'] else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*")
 
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
 
@@ -384,11 +404,11 @@ async def inscrire(member):
     if (member.id not in participants) and (len(participants) < tournoi['limite']):
 
         participants[member.id] = {
-            "display_name": member.display_name if use_guild_name else str(member),
+            "display_name": member.display_name if tournoi['use_guild_name'] else str(member),
             "checked_in": False
         }
 
-        if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_check-in"]:
+        if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
             participants[member.id]["challonge"] = (
                 await async_http_retry(
                     challonge.participants.create,
@@ -419,13 +439,14 @@ async def inscrire(member):
             tournoi['waiting_list_id'] = waiting_list_msg.id
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-        waiting_list[member.id] = { "display_name": member.display_name if use_guild_name else str(member) }
+        waiting_list[member.id] = { "display_name": member.display_name if tournoi['use_guild_name'] else str(member) }
 
         with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
         await update_waiting_list()
 
         try:
-            await member.send(f"Dû au manque de place, tu es ajouté(e) à la liste d'attente pour le tournoi **{tournoi['name']}**. Tu seras prévenu(e) si une place se libère !")
+            await member.send(f"Dû au manque de place, tu es ajouté(e) à la **liste d'attente** pour le tournoi **{tournoi['name']}**. "
+                              f"Maintiens ton inscription seulement si tu es sûr(e) de vouloir participer. Tu seras prévenu(e) si une place se libère !")
         except discord.Forbidden:
             pass
 
@@ -438,9 +459,9 @@ async def update_waiting_list():
 
     old_waiting_list = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["waiting_list_id"])
 
-    new_waiting_list = ":hourglass: __Liste d'attente__ :\n"
+    new_waiting_list = ":hourglass: __Liste d'attente__ *(seuls les 20 premiers sont affichés)* :\n"
 
-    for joueur in waiting_list:
+    for joueur in list(waiting_list)[:20]:
         new_waiting_list += f":white_small_square: {waiting_list[joueur]['display_name']}\n"
 
     await old_waiting_list.edit(content=new_waiting_list)
@@ -455,7 +476,7 @@ async def desinscrire(member):
 
     if member.id in participants:
 
-        if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_check-in"]:
+        if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
             await async_http_retry(challonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
@@ -464,7 +485,7 @@ async def desinscrire(member):
             except discord.HTTPException:
                 pass
 
-        if datetime.datetime.now() < tournoi["fin_check-in"]:
+        if datetime.datetime.now() < tournoi["fin_inscription"]:
 
             del participants[member.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
@@ -489,12 +510,6 @@ async def desinscrire(member):
                 pass
             else:
                 await inscrire(member.guild.get_member(next_waiting_player))
-
-                # Since the member can be inactive, check-in should be required
-                with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-                participants[next_waiting_player]["checked_in"] = False
-                with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-
                 del waiting_list[next_waiting_player]
                 with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
 
@@ -539,7 +554,7 @@ async def start_check_in():
     scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
 
     await bot.get_channel(inscriptions_channel_id).send(f":information_source: Le check-in a commencé dans <#{check_in_channel_id}>. "
-                                                        f"Vous pouvez toujours vous inscrire ici jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** tant qu'il y a de la place.")
+                                                        f"Vous pouvez toujours vous inscrire ici jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}**.")
 
     await bot.get_channel(check_in_channel_id).send(f"<@&{challenger_id}> Le check-in pour **{tournoi['name']}** a commencé ! "
                                                     f"Vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
@@ -564,7 +579,7 @@ async def rappel_check_in():
 
             if tournoi["fin_check-in"] - datetime.datetime.now() < datetime.timedelta(minutes=10):
                 try:
-                    await guild.get_member(inscrit).send(f"Attention ! Il ne te reste plus qu'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
+                    await guild.get_member(inscrit).send(f"**Attention !** Il ne te reste plus qu'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
                 except discord.Forbidden:
                     pass
 
@@ -578,33 +593,29 @@ async def end_check_in():
 
     guild = bot.get_guild(id=guild_id)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
+    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :** les personnes n'ayant pas check-in vont être retirées du tournoi.")
 
     try:
         scheduler.remove_job('rappel_check_in')
     except:
         pass
 
+    for inscrit in list(participants):
+        if participants[inscrit]["checked_in"] == False:
+            await desinscrire(guild.get_member(inscrit))
+
+    await bot.get_channel(inscriptions_channel_id).send(":information_source: La liste d'attente (si présente) est prioritaire pour remplacer les absents du check-in.")
+
+
+### Fin des inscriptions
+async def end_inscription():
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+
     annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
     await annonce.clear_reaction("✅")
 
-    for inscrit in list(participants):
-        if participants[inscrit]["checked_in"] == False:
-            if tournoi["bulk_mode"] == False:
-                await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[inscrit]['challonge'])
-            to_dq = guild.get_member(inscrit)
-            try:
-                await to_dq.remove_roles(guild.get_role(challenger_id))
-                await to_dq.send(f"Tu as été retiré(e) du tournoi {tournoi['name']} car tu n'as pas check-in à temps, désolé !")
-            except (discord.HTTPException, discord.Forbidden):
-                pass
-            del participants[inscrit]
-
-    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
-    await update_annonce()
-
-    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé.** Les personnes n'ayant pas check-in ont été retirées du bracket. Contactez les TOs en cas de besoin.")
-    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées.** Le tournoi débutera dans les minutes qui suivent : le bracket est en cours de finalisation. Contactez les TOs en cas de besoin.")
+    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est en cours de finalisation.")
 
     if tournoi["bulk_mode"] == True:
         await seed_participants()
@@ -665,13 +676,6 @@ async def flipcoin(ctx):
 @commands.has_role(to_id)
 @commands.check(tournament_is_pending)
 async def add_inscrit(ctx):
-
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    
-    if datetime.datetime.now() > tournoi["fin_check-in"]:
-        await ctx.message.add_reaction("🕐")
-        return
-
     for member in ctx.message.mentions: await inscrire(member)
     await ctx.message.add_reaction("✅")
 
@@ -937,7 +941,7 @@ async def launch_matches(guild, bracket):
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
 
                 if tournoi["game"] == "Project+":
-                    gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer ping`.\n"
+                    gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer [ping]`.\n"
 
                 if is_top8(match["round"]):
                     gaming_channel_annonce += ":five: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
@@ -1474,6 +1478,51 @@ async def send_help(ctx):
     if challenger_id in author_roles: await ctx.send(challenger_help_text) # challenger help
     if to_id in author_roles: await ctx.send(admin_help_text) # admin help
     if streamer_id in author_roles: await ctx.send(streamer_help_text) # streamer help
+
+
+### Set preference
+@bot.command(name='set', aliases=['turn'])
+@commands.has_role(to_id)
+async def set_preference(ctx, arg1, arg2):
+    with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
+
+    try:
+        if isinstance(preferences[arg1.lower()], bool):
+            if arg2.lower() in ["true", "on"]:
+                preferences[arg1.lower()] = True 
+            elif arg2.lower() in ["false", "off"]:
+                preferences[arg1.lower()] = False
+            else:
+                raise ValueError
+        elif isinstance(preferences[arg1.lower()], int):
+            preferences[arg1.lower()] = int(arg2)
+
+    except KeyError:
+        await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> **Paramètre inconnu :** `{arg1}`*")
+
+    except ValueError:
+        await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> **Valeur incorrecte :** `{arg2}`.")
+
+    else:
+        with open(preferences_path, 'w') as f: yaml.dump(preferences, f)
+        await ctx.message.add_reaction("✅")
+        await ctx.send(f"<@{ctx.author.id}> **Paramètre changé :** `{arg1} = {arg2}`.")
+
+
+### See preferences
+@bot.command(name='settings', aliases=['preferences', 'config'])
+@commands.has_role(to_id)
+async def check_settings(ctx):
+    with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
+
+    parametres = ""
+    for key, value in preferences:
+        parametres += f":white_small_square: **{key}** : *{value}*\n"
+
+    await ctx.send(f":gear: __Liste des paramètres modifiables sans redémarrage__ :\n{parametres}\n"
+                   f"Vous pouvez modifier chacun de ces paramètres avec la commande `!set [paramètre] [valeur]`.")
 
 
 ### Desync message

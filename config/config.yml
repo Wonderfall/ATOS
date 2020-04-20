@@ -1,14 +1,11 @@
-# version 5.x
+# version 5.6
 system:
   debug: True
-  auto_mode: False
-  bulk_mode: False
-  use_guild_name: True
   greet_new_members: True
   manage_game_roles: True
-  language: fr_FR
+  language: fr_FR # only fr_FR is supported right now
 
-paths:
+paths: # can be left as default values
   tournoi: data/tournoi.json
   participants: data/participants.json
   waiting_list: data/waiting_list.json
@@ -16,6 +13,7 @@ paths:
   ranking: data/ranking.csv
   gamelist: config/gamelist.yml
   auto_mode: config/auto_mode.yml
+  preferences: config/preferences.yml
 
 discord:
   secret:

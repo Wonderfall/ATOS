@@ -1,0 +1,7 @@
+auto_mode: False
+bulk_mode: False
+use_guild_name: True
+check_in_opening: 60 # MINUTES before tournament
+check_in_closing: 15 # MINUTES before tournament
+inscriptions_opening: 30 # HOURS before tournament, useful for auto-mode ONLY
+inscriptions_closing: 10 # MINUTES before tournament

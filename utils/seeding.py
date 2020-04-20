@@ -11,9 +11,8 @@ from filecmp import cmp
 from pathlib import Path
 
 
-async def get_ranking_csv():
+async def get_ranking_csv(tournoi):
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     for page in range(1,6): # Retrieve up to 5*200 = 1000 entries (since max. CSV export is 200)
 

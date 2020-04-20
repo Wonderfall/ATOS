@@ -13,6 +13,7 @@ stream_path                         = config["paths"]["stream"]
 gamelist_path                       = config["paths"]["gamelist"]
 auto_mode_path                      = config["paths"]["auto_mode"]
 ranking_path                        = config["paths"]["ranking"]
+preferences_path                    = config["paths"]["preferences"]
 
 ### Locale
 language                            = config["system"]["language"]
@@ -21,39 +22,36 @@ language                            = config["system"]["language"]
 bot_prefix                          = config["discord"]["prefix"]
 
 ### System preferences
-auto_mode                           = config["system"]["auto_mode"]
-bulk_mode                           = config["system"]["bulk_mode"]
-use_guild_name                      = config["system"]["use_guild_name"]
 greet_new_members                   = config["system"]["greet_new_members"]
 manage_game_roles                   = config["system"]["manage_game_roles"]
 
 #### Discord IDs
-guild_id                            = config["discord"]["guild"]
+guild_id                            = int(config["discord"]["guild"])
 
 ### Server channels
-blabla_channel_id                   = config["discord"]["channels"]["blabla"]
-annonce_channel_id                  = config["discord"]["channels"]["annonce"]
-check_in_channel_id                 = config["discord"]["channels"]["check_in"]
-inscriptions_channel_id             = config["discord"]["channels"]["inscriptions"]
-scores_channel_id                   = config["discord"]["channels"]["scores"]
-stream_channel_id                   = config["discord"]["channels"]["stream"]
-queue_channel_id                    = config["discord"]["channels"]["queue"]
-tournoi_channel_id                  = config["discord"]["channels"]["tournoi"]
-resultats_channel_id                = config["discord"]["channels"]["resultats"]
-roles_channel_id                    = config["discord"]["channels"]["roles"]
-to_channel_id                       = config["discord"]["channels"]["to"]
+blabla_channel_id                   = int(config["discord"]["channels"]["blabla"])
+annonce_channel_id                  = int(config["discord"]["channels"]["annonce"])
+check_in_channel_id                 = int(config["discord"]["channels"]["check_in"])
+inscriptions_channel_id             = int(config["discord"]["channels"]["inscriptions"])
+scores_channel_id                   = int(config["discord"]["channels"]["scores"])
+stream_channel_id                   = int(config["discord"]["channels"]["stream"])
+queue_channel_id                    = int(config["discord"]["channels"]["queue"])
+tournoi_channel_id                  = int(config["discord"]["channels"]["tournoi"])
+resultats_channel_id                = int(config["discord"]["channels"]["resultats"])
+roles_channel_id                    = int(config["discord"]["channels"]["roles"])
+to_channel_id                       = int(config["discord"]["channels"]["to"])
 
 ### Info, non-interactive channels
-deroulement_channel_id              = config["discord"]["channels"]["deroulement"]
-faq_channel_id                      = config["discord"]["channels"]["faq"]
+deroulement_channel_id              = int(config["discord"]["channels"]["deroulement"])
+faq_channel_id                      = int(config["discord"]["channels"]["faq"])
 
 ### Server categories
-tournoi_cat_id                      = config["discord"]["categories"]["tournoi"]
+tournoi_cat_id                      = int(config["discord"]["categories"]["tournoi"])
 
 ### Role IDs
-challenger_id                       = config["discord"]["roles"]["challenger"]
-to_id                               = config["discord"]["roles"]["to"]
-streamer_id                         = config["discord"]["roles"]["streamer"]
+challenger_id                       = int(config["discord"]["roles"]["challenger"])
+to_id                               = int(config["discord"]["roles"]["to"])
+streamer_id                         = int(config["discord"]["roles"]["streamer"])
 
 ### Custom emojis
 server_logo                         = config["discord"]["emojis"]["logo"]
