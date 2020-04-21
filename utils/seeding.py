@@ -56,12 +56,13 @@ async def seed_participants():
 
     # Sort!
     sorted_participants = sorted(participants.items(), key=lambda k_v: k_v[1]['elo'], reverse=True)
+    sorted_participants = [x[1]['display_name'] for x in sorted_participants]
 
     # Send to Challonge
     challonge_participants = await async_http_retry(
         challonge.participants.bulk_add,
         tournoi['id'],
-        [x[1]['display_name'] for x in sorted_participants]
+        sorted_participants
     )
 
     # Assign IDs

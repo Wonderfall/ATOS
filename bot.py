@@ -681,7 +681,8 @@ async def flipcoin(ctx):
 @commands.has_role(to_id)
 @commands.check(tournament_is_pending)
 async def add_inscrit(ctx):
-    for member in ctx.message.mentions: await inscrire(member)
+    for member in ctx.message.mentions:
+        await inscrire(member)
     await ctx.message.add_reaction("✅")
 
 
@@ -690,7 +691,8 @@ async def add_inscrit(ctx):
 @commands.has_role(to_id)
 @commands.check(tournament_is_underway_or_pending)
 async def remove_inscrit(ctx):
-    for member in ctx.message.mentions: await desinscrire(member)
+    for member in ctx.message.mentions:
+        await desinscrire(member)
     await ctx.message.add_reaction("✅")
 
 
@@ -810,7 +812,7 @@ async def score_match(ctx, arg):
 ### Clean channels
 async def clean_channels(guild, bracket):
 
-    play_orders = [x['suggested_play_order'] for x in bracket]
+    play_orders = [match['suggested_play_order'] for match in bracket]
 
     for category, channels in guild.by_category():
         # Category must be a tournament category
@@ -1306,7 +1308,7 @@ async def rappel_matches(guild, bracket):
                                     if message.author != winner:
                                         looser, looser_last_activity = message.author, message.created_at # Le second résultat sera assigné à looser
                                         break
-                        
+
                         try:
                             winner
                         except NameError: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
@@ -1399,8 +1401,8 @@ async def annonce_resultats():
         resultats.append((joueur['final_rank'], joueur['display_name']))
 
     resultats.sort()
-    top5 = [y for x, y in resultats if x == 5]
-    top7 = [y for x, y in resultats if x == 7]
+    top6 = ' / '.join([y for x, y in resultats if x == 5])
+    top8 = ' / '.join([y for x, y in resultats if x == 7])
 
     ending = random.choice([
         "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...",
@@ -1414,8 +1416,8 @@ async def annonce_resultats():
                   f":second_place: **2e** : {resultats[1][1]}\n"
                   f":third_place: **3e** : {resultats[2][1]}\n"
                   f":medal: **4e** : {resultats[3][1]}\n"
-                  f":reminder_ribbon: **5e** : {top5[0]} / {top5[1]}\n"
-                  f":reminder_ribbon: **7e** : {top7[0]} / {top7[1]}\n\n"
+                  f":reminder_ribbon: **5e** : {top6}\n"
+                  f":reminder_ribbon: **7e** : {top8}\n\n"
                   f":bar_chart: {len(participants)} entrants\n"
                   f"{gamelist[tournoi['game']]['icon']} {tournoi['game']}\n"
                   f":link: **Bracket :** {tournoi['url']}\n\n"
