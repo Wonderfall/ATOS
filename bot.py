@@ -1350,6 +1350,15 @@ async def get_stagelist(ctx):
     await ctx.send(msg)
 
 
+### Obtenir stagelist
+@bot.command(name='ruleset', aliases=['rules'])
+@commands.check(tournament_is_underway_or_pending)
+async def get_ruleset(ctx):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
+    await ctx.send(f"<@{ctx.author.id}> Le ruleset est disponible ici : <#{gamelist[tournoi['game']]['ruleset']}>")
+
+
 ### Lag
 @bot.command(name='lag')
 @commands.has_role(challenger_id)
