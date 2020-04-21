@@ -1350,7 +1350,7 @@ async def get_stagelist(ctx):
     await ctx.send(msg)
 
 
-### Obtenir stagelist
+### Obtenir ruleset
 @bot.command(name='ruleset', aliases=['rules'])
 @commands.check(tournament_is_underway_or_pending)
 async def get_ruleset(ctx):

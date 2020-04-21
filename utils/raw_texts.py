@@ -26,6 +26,7 @@ challenger_help_text=f"""
 :white_small_square: `{bot_prefix}flip` : pile/face simple, fonctionne dans tous les channels.
 :white_small_square: `{bot_prefix}win` : rentrer le score d'un set dans <#{scores_channel_id}> *(paramètre : score)*.
 :white_small_square: `{bot_prefix}stages` : obtenir la stagelist légale actuelle selon le jeu du tournoi actuel.
+:white_small_square: `{bot_prefix}ruleset` : obtenir un lien vers le channel du ruleset du jeu actuel.
 :white_small_square: `{bot_prefix}lag` : ouvrir une procédure de lag, à utiliser avec parcimonie.
 """
 
