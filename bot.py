@@ -101,15 +101,11 @@ async def init_tournament(url_or_id):
     }
 
     # Checks
-    if datetime.datetime.now() > tournoi["début_check-in"]:
-        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **trop tard pour ce tournoi**.")
-        return
-
     if tournoi['game'] not in gamelist:
         await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **jeu introuvable dans la gamelist**.")
         return
 
-    if not (tournoi["début_check-in"] < tournoi["fin_check-in"] < tournoi["fin_inscription"] < tournoi["début_tournoi"]):
+    if not (datetime.datetime.now() < tournoi["début_check-in"] < tournoi["fin_check-in"] < tournoi["fin_inscription"] < tournoi["début_tournoi"]):
         await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **conflit des temps de check-in et d'inscriptions**.")
         return
 
@@ -240,7 +236,8 @@ async def start_tournament(ctx):
                      f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
                      f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
                      f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
-                     f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.")
+                     f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.\n\n"
+                     f":satellite_orbital: Chaque score étant **transmis un par un**, il est probable que la communication prenne jusqu'à 30 secondes.")
 
     await bot.get_channel(scores_channel_id).send(score_annonce)
 
@@ -258,7 +255,9 @@ async def start_tournament(ctx):
                        f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
                        f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
                        f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
-                       f":fire: Le **top 8** commencera, d'après le bracket :\n- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n- En **looser round {-tournoi['round_looser_top8']}**\n\n"
+                       f":fire: Le **top 8** commencera, d'après le bracket :\n"
+                       f"- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n"
+                       f"- En **looser round {-tournoi['round_looser_top8']}**\n\n"
                        f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
     if tournoi["game"] == "Project+":
@@ -608,7 +607,10 @@ async def end_check_in():
         if participants[inscrit]["checked_in"] == False:
             await desinscrire(guild.get_member(inscrit))
 
-    await bot.get_channel(inscriptions_channel_id).send(":information_source: La liste d'attente (si présente) est prioritaire pour remplacer les absents du check-in.")
+    await bot.get_channel(inscriptions_channel_id).send(
+        ":information_source: **Les absents du check-in ont été retirés** : des places sont peut-être libérées pour des inscriptions de dernière minute. "
+        "Notez que la liste d'attente est prioritaire pour remplacer les absents du check-in."
+    )
 
 
 ### Fin des inscriptions
@@ -807,12 +809,15 @@ async def score_match(ctx, arg):
 
 ### Clean channels
 async def clean_channels(guild, bracket):
+
+    play_orders = [x['suggested_play_order'] for x in bracket]
+
     for category, channels in guild.by_category():
         # Category must be a tournament category
         if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
             for channel in channels:
                 # Channel names correspond to a suggested play order
-                if int(channel.name) not in [x['suggested_play_order'] for x in bracket]:
+                if int(channel.name) not in play_orders: # If the channel is not useful anymore
                     last_message = await channel.fetch_message(channel.last_message_id)
                     # Remove the channel if the last message is more than 5 minutes old
                     if datetime.datetime.now() - last_message.created_at > datetime.timedelta(minutes = 5):
