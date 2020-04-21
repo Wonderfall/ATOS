@@ -102,15 +102,15 @@ async def init_tournament(url_or_id):
 
     # Checks
     if datetime.datetime.now() > tournoi["début_check-in"]:
-        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : trop tard pour ce tournoi.")
+        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **trop tard pour ce tournoi**.")
         return
 
     if tournoi['game'] not in gamelist:
-        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : jeu introuvable dans la gamelist.")
+        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **jeu introuvable dans la gamelist**.")
         return
 
     if not (tournoi["début_check-in"] < tournoi["fin_check-in"] < tournoi["fin_inscription"] < tournoi["début_tournoi"]):
-        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : conflit des temps de check-in et d'inscriptions.")
+        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **conflit des temps de check-in et d'inscriptions**.")
         return
 
     if tournoi['bulk_mode'] == True:
@@ -244,8 +244,11 @@ async def start_tournament(ctx):
 
     await bot.get_channel(scores_channel_id).send(score_annonce)
 
-    queue_annonce = (":information_source: Le lancement des sets est automatisé. **Veuillez suivre les consignes de ce channel**, que ce soit par le bot ou les TOs. "
-                     "Tout passage on stream sera notifié à l'avance.")
+    queue_annonce = (":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n"
+                     ":white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n"
+                     ":white_small_square: Tout set devant se jouer en BO5 (top 8) est indiqué ici, et également dans votre channel.\n"
+                     ":white_small_square: La personne qui commence les bans est indiquée dans votre channel (en cas de besoin : `!flip`).\n\n"
+                     ":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les 15 minutes qui suivent sa création__.")
 
     await bot.get_channel(queue_channel_id).send(queue_annonce)
 
@@ -953,6 +956,13 @@ async def launch_matches(guild, bracket):
 
                 await gaming_channel.send(gaming_channel_annonce)
 
+                scheduler.add_job(
+                    check_channel_activity,
+                    id = f'check activity of set {gaming_channel.name}',
+                    args = [gaming_channel, player1, player2],
+                    run_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
+                )
+
             on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
             top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
 
@@ -966,6 +976,30 @@ async def launch_matches(guild, bracket):
             while sets:
                 await bot.get_channel(queue_channel_id).send('\n\n'.join(sets[:10]))
                 del sets[:10] # and send by groups of ten sets
+
+
+async def check_channel_activity(channel, player1, player2):
+    player1_is_active, player2_is_active = False, False
+
+    async for message in channel.history():
+        if message.author.id == player1.id:
+            player1_is_active = True
+        if message.author.id == player2.id:
+            player2_is_active = True
+        if player1_is_active and player2_is_active:
+            return
+
+    if player1_is_active == False:
+        await channel.send(f":timer: **DQ automatique de <@{player1.id}>** pour inactivité** : 15 minutes sans manifestation du joueur.")
+        await desinscrire(player1)
+        await bot.get_channel(to_channel_id).send(f":information_source: **DQ automatique** de <@{player1.id}> pour inactivité, set n°{channel.name}.")
+        await player1.send("Désolé, tu as été DQ automatiquement car tu n'as pas été actif sur ton channel de set dans les 15 premières minutes qui ont suivi son lancement.")
+
+    if player2_is_active == False:
+        await channel.send(f":timer: **DQ automatique de <@{player2.id}>** pour inactivité** : 15 minutes sans manifestation du joueur.")
+        await desinscrire(player2)
+        await bot.get_channel(to_channel_id).send(f":information_source: **DQ automatique** de <@{player2.id}> pour inactivité, set n°{channel.name}.")
+        await player2.send("Désolé, tu as été DQ automatiquement car tu n'as pas été actif sur ton channel de set dans les 15 premières minutes qui ont suivi son lancement.")
 
 
 @bot.command(name='initstream', aliases=['is'])

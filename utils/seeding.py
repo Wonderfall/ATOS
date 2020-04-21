@@ -45,7 +45,7 @@ async def seed_participants():
                 ranking[row['Player']] = int(row['Points'])
 
     # Base elo : median if ranking incomplete, put at bottom otherwise
-    base_elo = median(list(ranking.values())) if len(ranking) < 200 else min(list(ranking.values()))
+    base_elo = median(list(ranking.values())) #if len(ranking) < 200 else min(list(ranking.values()))
 
     # Assign Elo ranking to each player
     for joueur in participants:
