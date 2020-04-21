@@ -35,6 +35,8 @@ admin_help_text=f"""
 :white_small_square: `{bot_prefix}rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.
 :white_small_square: `{bot_prefix}add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.
 :white_small_square: `{bot_prefix}start/end` : démarrer/finaliser le tournoi enregistré.
+:white_small_square: `{bot_prefix}set` : changer une préférence *(paramètres : [paramètre] [on/off])*.
+:white_small_square: `{bot_prefix}settings` : afficher les préférences modifiables avec `{bot_prefix}set`.
 """
 
 streamer_help_text=f"""
