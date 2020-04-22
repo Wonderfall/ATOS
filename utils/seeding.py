@@ -24,7 +24,7 @@ async def get_ranking_csv(tournoi):
                 f"{gamelist[tournoi['game']]['ranking']['league_id']}?rows=200&page={page}&export=csv")
 
             async with session.get(url) as resp:
-                if int(resp.status) > 400:
+                if int(resp.status) >= 400:
                     raise ValueError("Ranking not found/accessible")
                 async with aiofiles.open(f'{ranking_path}_{page}', mode='wb') as f:
                     await f.write(await resp.read())
