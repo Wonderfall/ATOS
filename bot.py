@@ -1,10 +1,10 @@
-import discord, random, logging, os, json, re, challonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
+import discord, random, logging, os, json, re, achallonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
-from requests.exceptions import HTTPError
 from urllib import error
 from pathlib import Path
+from achallonge import ChallongeException
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
@@ -31,7 +31,7 @@ name = "A.T.O.S."
 ### Init things
 bot = commands.Bot(command_prefix=commands.when_mentioned_or(bot_prefix)) # Set prefix for commands
 bot.remove_command('help') # Remove default help command to set our own
-challonge.set_credentials(challonge_user, challonge_api_key)
+achallonge.set_credentials(challonge_user, challonge_api_key)
 scheduler = AsyncIOScheduler()
 
 
@@ -77,8 +77,8 @@ async def init_tournament(url_or_id):
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     try:
-        infos = await async_http_retry(challonge.tournaments.show, url_or_id)
-    except HTTPError:
+        infos = await async_http_retry(achallonge.tournaments.show, url_or_id)
+    except ChallongeException:
         return
 
     debut_tournoi = dateutil.parser.parse(str(infos["start_at"])).replace(tzinfo=None)
@@ -188,7 +188,7 @@ async def auto_setup_tournament():
             if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = preferences['inscriptions_opening']):
 
                 new_tournament = await async_http_retry(
-                    challonge.tournaments.create,
+                    achallonge.tournaments.create,
                     name=f"{tournament} #{tournaments[tournament]['edition']}",
                     url=f"{re.sub('[^A-Za-z0-9]+', '', tournament)}{tournaments[tournament]['edition']}",
                     tournament_type='double elimination',
@@ -214,7 +214,7 @@ async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if datetime.datetime.now() > tournoi["fin_inscription"]:
-        await async_http_retry(challonge.tournaments.start, tournoi["id"])
+        await async_http_retry(achallonge.tournaments.start, tournoi["id"])
         tournoi["statut"] = "underway"
         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
         await ctx.message.add_reaction("✅")
@@ -277,7 +277,7 @@ async def end_tournament(ctx):
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     if datetime.datetime.now() > tournoi["début_tournoi"]:
-        await async_http_retry(challonge.tournaments.finalize, tournoi["id"])
+        await async_http_retry(achallonge.tournaments.finalize, tournoi["id"])
         await ctx.message.add_reaction("✅")
     else:
         await ctx.message.add_reaction("🕐")
@@ -413,7 +413,7 @@ async def inscrire(member):
         if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
             participants[member.id]["challonge"] = (
                 await async_http_retry(
-                    challonge.participants.create,
+                    achallonge.participants.create,
                     tournoi["id"],
                     participants[member.id]["display_name"]
                 )
@@ -479,7 +479,7 @@ async def desinscrire(member):
     if member.id in participants:
 
         if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
-            await async_http_retry(challonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
+            await async_http_retry(achallonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
 
         if datetime.datetime.now() > tournoi["début_check-in"]:
             try:
@@ -712,7 +712,7 @@ async def self_dq(ctx):
 async def underway_tournament():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     guild = bot.get_guild(id=guild_id)
-    bracket = await async_http_retry(challonge.matches.index, tournoi["id"], state='open')
+    bracket = await async_http_retry(achallonge.matches.index, tournoi["id"], state='open')
     await launch_matches(guild, bracket)
     await call_stream(guild, bracket)
     await rappel_matches(guild, bracket)
@@ -735,12 +735,12 @@ async def score_match(ctx, arg):
 
     try:
         match = await async_http_retry(
-            challonge.matches.index,
+            achallonge.matches.index,
             tournoi['id'],
             state='open',
             participant_id=winner
         )
-    except HTTPError:
+    except ChallongeException:
         await ctx.message.add_reaction("🕐")
         await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu récupérer les données du set. Merci de retenter dans quelques instants.")
         return
@@ -788,7 +788,7 @@ async def score_match(ctx, arg):
 
     try:
         await async_http_retry(
-            challonge.matches.update,
+            achallonge.matches.update,
             tournoi['id'],
             match[0]['id'],
             scores_csv=score,
@@ -796,7 +796,7 @@ async def score_match(ctx, arg):
         )
         await ctx.message.add_reaction("✅")
 
-    except HTTPError:
+    except ChallongeException:
         await ctx.message.add_reaction("🕐")
         await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu envoyer ton score. Merci de retenter dans quelques instants.")
 
@@ -844,12 +844,12 @@ async def forfeit_match(ctx):
 
     try:
         match = await async_http_retry(
-            challonge.matches.index,
+            achallonge.matches.index,
             tournoi['id'],
             state='open',
             participant_id=looser
         )
-    except HTTPError:
+    except ChallongeException:
         await ctx.message.add_reaction("⚠️")
         return
 
@@ -867,13 +867,13 @@ async def forfeit_match(ctx):
 
     try:
         await async_http_retry(
-            challonge.matches.update,
+            achallonge.matches.update,
             tournoi['id'],
             match[0]['id'],
             scores_csv=score,
             winner_id=winner
         )
-    except HTTPError:
+    except ChallongeException:
         await ctx.message.add_reaction("⚠️")
     else:
         await ctx.message.add_reaction("✅")
@@ -909,7 +909,7 @@ async def launch_matches(guild, bracket):
 
         if match["underway_at"] == None:
 
-            await async_http_retry(challonge.matches.mark_as_underway, tournoi["id"], match["id"])
+            await async_http_retry(achallonge.matches.mark_as_underway, tournoi["id"], match["id"])
 
             for joueur in participants:
                 if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
@@ -1101,8 +1101,8 @@ async def add_stream(ctx, *args: int):
 
     # Otherwise we should check if the sets are open
     try:
-        bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=('open', 'pending'))
-    except HTTPError:
+        bracket = await async_http_retry(achallonge.matches.index, tournoi['id'], state=('open', 'pending'))
+    except ChallongeException:
         await ctx.message.add_reaction("🕐")
         return
 
@@ -1146,8 +1146,8 @@ async def list_stream(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
-        bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=('open', 'pending'))
-    except HTTPError:
+        bracket = await async_http_retry(achallonge.matches.index, tournoi['id'], state=('open', 'pending'))
+    except ChallongeException:
         await ctx.message.add_reaction("🕐")
         return
 
@@ -1239,7 +1239,7 @@ async def call_stream(guild, bracket):
 ### Calculer les rounds à partir desquels un set est top 8 (bracket D.E.)
 async def calculate_top8():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    bracket = await async_http_retry(challonge.matches.index, tournoi['id'], state=("open", "pending"))
+    bracket = await async_http_retry(achallonge.matches.index, tournoi['id'], state=("open", "pending"))
 
     rounds = [match["round"] for match in bracket]
     tournoi["round_winner_top8"] = max(rounds) - 2
@@ -1313,8 +1313,8 @@ async def rappel_matches(guild, bracket):
                             winner
                         except NameError: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique des __2 joueurs__ pour inactivité : <@{player1.id}> & <@{player2.id}>**")
-                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[player1.id]['challonge'])
-                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[player2.id]['challonge'])
+                            await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[player1.id]['challonge'])
+                            await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[player2.id]['challonge'])
                             continue
 
                         try:
@@ -1322,12 +1322,12 @@ async def rappel_matches(guild, bracket):
                         except NameError: # S'il n'y a pas eu de résultat pour un second joueur différent : DQ de l'inactif
                             looser = player2 if winner.id == player1.id else player1
                             await gaming_channel.send(f"<@&{to_id}> **DQ automatique de <@{looser.id}> pour inactivité.**")
-                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
+                            await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
                             continue
 
                         if winner_last_activity - looser_last_activity > datetime.timedelta(minutes = 10): # Si différence d'inactivité de plus de 10 minutes
                             await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner.id}> passe au round suivant.\n-<@{looser.id}> est DQ du tournoi.")
-                            await async_http_retry(challonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
+                            await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
 
                         else: # Si pas de différence notable, demander une décision manuelle
                             await gaming_channel.send(f"<@&{to_id}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise")
@@ -1400,7 +1400,7 @@ async def annonce_resultats():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    participants, resultats = await async_http_retry(challonge.participants.index, tournoi["id"]), []
+    participants, resultats = await async_http_retry(achallonge.participants.index, tournoi["id"]), []
 
     if len(participants) < 8:
         await bot.get_channel(resultats_channel_id).send(f"{server_logo} Résultats du **{tournoi['name']}** : {tournoi['url']}")

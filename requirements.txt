@@ -4,3 +4,4 @@ discord.py==1.3.*
 pychal==1.9.*
 python-dateutil==2.8.*
 PyYAML==5.3.*
+git+https://github.com/Wonderfall/apychal
