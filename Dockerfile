@@ -7,9 +7,9 @@ WORKDIR /bot
 COPY requirements.txt .
 
 RUN apk -U upgrade \
- && apk add build-base git su-exec tini tzdata \
+ && apk add build-base git libffi-dev su-exec tini tzdata \
  && pip3 install --no-cache -r requirements.txt \
- && apk del build-base git && rm -rf /var/cache/apk/*
+ && apk del build-base git libffi-dev && rm -rf /var/cache/apk/*
 
 COPY docker/run.sh /usr/local/bin/run.sh
 
