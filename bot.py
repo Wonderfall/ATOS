@@ -46,7 +46,7 @@ async def on_ready():
     print(f"User : {bot.user.name}               ")
     print(f"ID   : {bot.user.id}                 ")
     print(f"-------------------------------------")
-    await bot.change_presence(activity=discord.Game(f'{name} {version}')) # As of April 2020, CustomActivity is not supported for bots
+    await bot.change_presence(activity=discord.Game(f'{name} • {version}')) # As of April 2020, CustomActivity is not supported for bots
     await reload_tournament()
 
 
@@ -308,7 +308,7 @@ async def end_tournament(ctx):
     for file in list(Path(Path(participants_path).parent).rglob('*.bak')):
         Path(file).unlink()
 
-    await bot.change_presence(activity=discord.Game(f'{name} {version}'))
+    await bot.change_presence(activity=discord.Game(f'{name} • {version}'))
 
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
@@ -1549,7 +1549,7 @@ async def set_preference(ctx, arg1, arg2):
 
     except KeyError:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Paramètre inconnu :** `{arg1}`*")
+        await ctx.send(f"<@{ctx.author.id}> **Paramètre inconnu :** `{arg1}`.")
 
     except ValueError:
         await ctx.message.add_reaction("⚠️")
@@ -1568,8 +1568,8 @@ async def check_settings(ctx):
     with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
 
     parametres = ""
-    for key, value in preferences:
-        parametres += f":white_small_square: **{key}** : *{value}*\n"
+    for parametre in preferences:
+        parametres += f":white_small_square: **{parametre}** : *{preferences[parametre]}*\n"
 
     await ctx.send(f":gear: __Liste des paramètres modifiables sans redémarrage__ :\n{parametres}\n"
                    f"Vous pouvez modifier chacun de ces paramètres avec la commande `!set [paramètre] [valeur]`.")
