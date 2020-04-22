@@ -1,31 +1,37 @@
 import asyncio
+import aiohttp
+import aiofiles, aiofiles.os
 import json
 import achallonge
 import csv
-from urllib import request, error
-from utils.http_retry import async_http_retry
-from utils.get_config import *
-from utils.json_hooks import dateconverter, dateparser, int_keys
 from statistics import median
 from filecmp import cmp
 from pathlib import Path
+
+from utils.http_retry import async_http_retry
+from utils.get_config import *
+from utils.json_hooks import dateconverter, dateparser, int_keys
 
 
 async def get_ranking_csv(tournoi):
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    for page in range(1,6): # Retrieve up to 5*200 = 1000 entries (since max. CSV export is 200)
+    async with aiohttp.ClientSession() as session:
 
-        url = (f"https://braacket.com/league/{gamelist[tournoi['game']]['ranking']['league_name']}/ranking/"
-               f"{gamelist[tournoi['game']]['ranking']['league_id']}?rows=200&page={page}&export=csv")
+        for page in range(1,6): # Retrieve up to 5*200 = 1000 entries (since max. CSV export is 200)
 
-        # Braacket doesn't throw an error if retrived page shouldn't exist, so...
-        await async_http_retry(request.urlretrieve, url, f'{ranking_path}_{page}')
+            url = (f"https://braacket.com/league/{gamelist[tournoi['game']]['ranking']['league_name']}/ranking/"
+                f"{gamelist[tournoi['game']]['ranking']['league_id']}?rows=200&page={page}&export=csv")
 
-        # ... stop and remove file if the last one is identical!
-        if page != 1 and cmp(f'{ranking_path}_{page}', f'{ranking_path}_{page-1}'):
-            Path(f'{ranking_path}_{page}').unlink()
-            break
+            async with session.get(url) as resp:
+                if int(resp.status) > 400:
+                    raise ValueError("Ranking not found/accessible")
+                async with aiofiles.open(f'{ranking_path}_{page}', mode='wb') as f:
+                    await f.write(await resp.read())
+
+            if page != 1 and cmp(f'{ranking_path}_{page}', f'{ranking_path}_{page-1}'):
+                await aiofiles.os.remove(f'{ranking_path}_{page}')
+                break
 
 
 async def seed_participants():

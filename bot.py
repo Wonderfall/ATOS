@@ -1,8 +1,8 @@
 import discord, random, logging, os, json, re, achallonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
+import aiofiles, aiofiles.os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from babel.dates import format_date, format_time
 from discord.ext import commands
-from urllib import error
 from pathlib import Path
 from achallonge import ChallongeException
 
@@ -112,7 +112,7 @@ async def init_tournament(url_or_id):
     if tournoi['bulk_mode'] == True:
         try:
             await get_ranking_csv(tournoi)
-        except (KeyError, error.URLError, error.HTTPError):
+        except (KeyError, ValueError):
             await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **données de ranking introuvables**.\n"
                                                       f"*Désactivez le bulk mode avec `!set bulk_mode off` si vous ne souhaitez pas utiliser de ranking.*")
             return
@@ -303,10 +303,9 @@ async def end_tournament(ctx):
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
     for file in list(Path(Path(ranking_path).parent).rglob('*.csv_*')):
-        Path(file).unlink()
-
+        await aiofiles.os.remove(file)
     for file in list(Path(Path(participants_path).parent).rglob('*.bak')):
-        Path(file).unlink()
+        await aiofiles.os.remove(file)
 
     await bot.change_presence(activity=discord.Game(f'{name} • {version}'))
 
