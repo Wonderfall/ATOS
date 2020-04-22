@@ -16,7 +16,7 @@ from utils.json_hooks import dateconverter, dateparser, int_keys
 async def get_ranking_csv(tournoi):
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers={'Connection': 'close'}) as session:
 
         for page in range(1,6): # Retrieve up to 5*200 = 1000 entries (since max. CSV export is 200)
 
