@@ -1,6 +1,6 @@
 import asyncio
 import json
-import challonge
+import achallonge
 import csv
 from urllib import request, error
 from utils.http_retry import async_http_retry
@@ -60,7 +60,7 @@ async def seed_participants():
 
     # Send to Challonge
     challonge_participants = await async_http_retry(
-        challonge.participants.bulk_add,
+        achallonge.participants.bulk_add,
         tournoi['id'],
         sorted_participants
     )
