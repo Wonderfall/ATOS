@@ -1,13 +1,13 @@
-# A.T.O.S.
+# A.T.O.S. - Automated Tournament Organizer for Smash
 
 ## What?
-It stands for *Automated Tournament Organizer for Smash*, or more precisely *Automation Tools for Organizing Smash*, whatever you like. It's designed to run on a Discord server and it can "take it from here", i.e. managing a Smash tournament with Challonge for the bracket stuff.
+It stands for *Automated Tournament Organizer for Smash*, or more precisely *Automation Tools for Organizing Smash*. It's designed to run on a Discord server and it can *take it from here* by managing a Smash tournament with Challonge for the bracket stuff.
 
 While the code should be somewhat working, **keep in mind I'm not a dev** (at least I don't consider myself to be one), just a smasher with some CS skills doing that as a hobby! You're free to fork, to contribute, and to use my work in whatever way you want.
 
 ## Main requirements
-`discord.py` (rewrite) : [powerful API wrapper for Discord](https://github.com/Rapptz/discord.py), credits to Danny.
-`apychal` : [asynchronous fork](https://github.com/Wonderfall/apychal) of `pychal` made by myself, credits to ZEDGR.
+- `discord.py` (rewrite) : [powerful API wrapper for Discord](https://github.com/Rapptz/discord.py), credits to Danny.
+- `apychal` : [asynchronous fork](https://github.com/Wonderfall/apychal) of `pychal` made by myself, credits to ZEDGR.
 
 ## What does it do?
 - Registration
@@ -30,9 +30,9 @@ While the code should be somewhat working, **keep in mind I'm not a dev** (at le
 Did I forget something?
 
 ## Can I use it?
-Its primary use is, as you can see, for a french server which is organizing online weeklies for Smash Bros. Ultimate. You can use it for your own, you can enhance it, that's your call. I'm not responsible for a thermonuclear warfare in your Discord server because you installed it!
+Its primary use is, as you can see, for a french server which is organizing online weeklies for Smash Bros. Ultimate. You can use it for your own, you can enhance it, that's your call. *I'm not responsible for a thermonuclear warfare in your Discord server because you installed it!*
 
-## How to install?
+## How to install
 I'll provide some documentation as soon as I can. Take care!
 
 ## Thanks
