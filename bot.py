@@ -899,11 +899,12 @@ async def get_available_category(match_round):
             return category
 
     else:
-        return await guild.create_category(
+        new_category = await guild.create_category(
             name=desired_cat,
-            reason='Since no category was available, a new one was created',
-            position=guild.get_channel(tournoi_cat_id).position + 1
+            reason='Since no category was available, a new one was created'
         )
+        await new_category.edit(position = guild.get_channel(tournoi_cat_id).position + 1)
+        return new_category
 
 
 ### Lancer matchs ouverts
