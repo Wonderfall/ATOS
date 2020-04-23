@@ -617,8 +617,8 @@ async def end_check_in():
             await desinscrire(guild.get_member(inscrit))
 
     await bot.get_channel(inscriptions_channel_id).send(
-        ":information_source: **Les absents du check-in ont été retirés** : des places sont peut-être libérées pour des inscriptions de dernière minute. "
-        "Notez que la liste d'attente est prioritaire pour remplacer les absents du check-in."
+        ":information_source: **Les absents du check-in ont été retirés** : des places sont peut-être libérées pour des inscriptions de dernière minute.\n"
+        "*Notez que la liste d'attente est prioritaire pour remplacer les absents du check-in.*"
     )
 
 
@@ -629,9 +629,9 @@ async def end_inscription():
     annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
     await annonce.clear_reaction("✅")
 
-    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est en cours de finalisation.")
+    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
-    if tournoi["bulk_mode"] == True:
+    if tournoi["bulk_mode"]:
         await seed_participants()
 
 
