@@ -584,10 +584,20 @@ async def rappel_check_in():
                 except discord.Forbidden:
                     pass
 
-    if rappel_msg != "":
-        await bot.get_channel(check_in_channel_id).send(f":clock1: **Rappel de check-in !**\n{rappel_msg}\n"
-                                                        f"*Vous avez jusqu'à {format_time(tournoi['fin_check-in'], format='short', locale=language)}, sinon vous serez désinscrit(s) automatiquement.*")
+    if rappel_msg == "": return
 
+    await bot.get_channel(check_in_channel_id).send(":clock1: **Rappel de check-in !**")
+
+    if len(rappel_msg) < 2000:
+        await bot.get_channel(check_in_channel_id).send(rappel_msg)
+    else: # Discord doesn't deal with more than 2000 characters
+        rappel_msg = [x.strip() for x in rappel_msg.split('\n') if x.strip() != ''] # so we have to split
+        while rappel_msg:
+            await bot.get_channel(check_in_channel_id).send('\n'.join(rappel_msg[:50]))
+            del rappel_msg[:50] # and send by groups of 50 people
+
+    await bot.get_channel(check_in_channel_id).send(f"*Vous avez jusqu'à {format_time(tournoi['fin_check-in'], format='short', locale=language)}, sinon vous serez désinscrit(s) automatiquement.*")
+    
 
 ### Fin du check-in
 async def end_check_in():
