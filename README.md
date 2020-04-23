@@ -1,14 +1,15 @@
 # A.T.O.S.
 
-### Meaning
+## What?
 It stands for *Automated Tournament Organizer for Smash*, or more precisely *Automation Tools for Organizing Smash*, whatever you like. It's designed to run on a Discord server and it can "take it from here", i.e. managing a Smash tournament with Challonge for the bracket stuff.
 
-**While the code should be working (and I try to keep it as clean as possible), keep in mind I'm not a dev, just a smasher with some CS skills doing that as a hobby!**
+While the code should be somewhat working, **keep in mind I'm not a dev** (at least I don't consider myself to be one), just a smasher with some CS skills doing that as a hobby! You're free to fork, to contribute, and to use my work in whatever way you want.
 
-### Tech
-`discord.py` and `pychal`, and a bunch of other Python packages.
+## Main requirements
+`discord.py` (rewrite) : [powerful API wrapper for Discord](https://github.com/Rapptz/discord.py), credits to Danny.
+`apychal` : [asynchronous fork](https://github.com/Wonderfall/apychal) of `pychal` made by myself, credits to ZEDGR.
 
-### What does it do?
+## What does it do?
 - Registration
 - Check-in
 - Waiting list
@@ -19,18 +20,20 @@ It stands for *Automated Tournament Organizer for Smash*, or more precisely *Aut
 - Reminders
 - Auto-DQ
 - Announcements (including results)
-- Welcoming new members
-- Some commands
-- Roles gestion
+- Greeting new members (optional)
+- Roles managing (optional)
 - Multi-game supports (Smash-focused)
+- Seeding (based on a braacket ranking)
+- Automatic tournament creation
+- Bunch of useful commands
 
->The idea : you create the tournament on Challonge, you pass the URL to the bot with a Discord command, and it takes it from here (from handling the registration to posting the final results, at the exception of determining which sets should be on stream). Cool, right?
+Did I forget something?
 
-### Use
-Its primary use is, as you can see, for a french server which is organizing online weeklies for Smash Bros. Ultimate. You can use it for your own, you can enhance it, that's your call.
+## Can I use it?
+Its primary use is, as you can see, for a french server which is organizing online weeklies for Smash Bros. Ultimate. You can use it for your own, you can enhance it, that's your call. I'm not responsible for a thermonuclear warfare in your Discord server because you installed it!
 
-### How to install
+## How to install?
 I'll provide some documentation as soon as I can. Take care!
 
-### Thanks
-*Smash Strasbourg community (especially), Smash Void, kheyFC.*
+## Thanks
+*Smash Strasbourg community (especially), Smash Void, kheyFC. And more...*
