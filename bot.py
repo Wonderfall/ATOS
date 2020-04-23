@@ -831,7 +831,8 @@ async def clean_channels(guild, bracket):
                 if int(channel.name) not in play_orders: # If the channel is not useful anymore
                     last_message = await channel.fetch_message(channel.last_message_id)
                     # Remove the channel if the last message is more than 5 minutes old
-                    if datetime.datetime.now() - last_message.created_at > datetime.timedelta(minutes = 5):
+                    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    if now - last_message.created_at > datetime.timedelta(minutes = 5):
                         try:
                             await channel.delete()
                         except (discord.NotFound, discord.HTTPException):
@@ -998,13 +999,16 @@ async def launch_matches(guild, bracket):
 async def check_channel_activity(channel, player1, player2):
     player1_is_active, player2_is_active = False, False
 
-    async for message in channel.history():
-        if message.author.id == player1.id:
-            player1_is_active = True
-        if message.author.id == player2.id:
-            player2_is_active = True
-        if player1_is_active and player2_is_active:
-            return
+    try:
+        async for message in channel.history():
+            if message.author.id == player1.id:
+                player1_is_active = True
+            if message.author.id == player2.id:
+                player2_is_active = True
+            if player1_is_active and player2_is_active:
+                return
+    except discord.NotFound:
+        return
 
     if player1_is_active == False:
         await channel.send(f":timer: **DQ automatique de <@{player1.id}> pour inactivité** : 15 minutes sans manifestation du joueur.")
