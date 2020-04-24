@@ -287,31 +287,43 @@ async def end_tournament(ctx):
         await ctx.message.add_reaction("🕐")
         return
 
-    scheduler.remove_job('underway_tournament')
-
+    # Remove underway task
+    try:
+        scheduler.remove_job('underway_tournament')
+    except:
+        pass
+    
+    # Annoucements (including results)
     await annonce_resultats()
+    await bot.get_channel(annonce_channel_id).send(
+        f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! "
+        f"J'espère vous revoir bientôt.")
 
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt.")
-
-    challenger = ctx.guild.get_role(challenger_id)
-
-    for inscrit in participants:
-        try:
-            await ctx.guild.get_member(inscrit).remove_roles(challenger)
-        except discord.HTTPException:
-            pass
-
+    # Reset JSON storage
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
     with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
     with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
+    # Remove now obsolete files
     for file in list(Path(Path(ranking_path).parent).rglob('*.csv_*')):
         await aiofiles.os.remove(file)
     for file in list(Path(Path(participants_path).parent).rglob('*.bak')):
         await aiofiles.os.remove(file)
 
+    # Remove tournament categories
+    await purge_categories()
+
+    # Change presence back to default
     await bot.change_presence(activity=discord.Game(f'{name} • {version}'))
+
+    # Remove all the Challenger roles (it can take time)
+    challenger = ctx.guild.get_role(challenger_id)
+    for inscrit in participants:
+        try:
+            await ctx.guild.get_member(inscrit).remove_roles(challenger)
+        except discord.HTTPException:
+            pass
 
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
@@ -661,18 +673,22 @@ async def check_in(ctx):
 async def purge_channels():
     guild = bot.get_guild(id=guild_id)
 
+    for channel_id in [check_in_channel_id, queue_channel_id, scores_channel_id]:
+        channel = guild.get_channel(channel_id)
+        async for message in channel.history():
+            await message.delete()
+
+    await purge_categories()
+
+
+### Nettoyer les catégories liées aux tournois
+async def purge_categories():
+    guild = bot.get_guild(id=guild_id)
+
     for category, channels in guild.by_category():
-
-        if category != None:
-
-            if category.id == tournoi_cat_id:
-                for channel in channels:
-                    async for message in channel.history():
-                        await message.delete()
-
-            if category.name.lower() in ["winner bracket", "looser bracket"]:
-                for channel in channels: await channel.delete()
-                await category.delete()
+        if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
+            for channel in channels: await channel.delete() # first, delete the channels
+            await category.delete() # then delete the category
 
 
 ### Affiche le bracket en cours
