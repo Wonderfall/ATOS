@@ -1151,6 +1151,24 @@ async def remove_stream(ctx, *args: int):
         await ctx.message.add_reaction("✅")
 
 
+### Interchanger 2 sets de la stream queue
+@bot.command(name='swapstream', aliases=['sws'])
+@commands.has_role(streamer_id)
+@commands.check(tournament_is_underway_or_pending)
+@commands.check(is_streaming)
+async def swap_stream(ctx, arg1: int, arg2: int):
+    with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
+
+    try:
+        x, y = stream[ctx.author.id]["queue"].index(arg1), stream[ctx.author.id]["queue"].index(arg2)
+    except ValueError:
+        await ctx.message.add_reaction("⚠️")
+    else:
+        stream[ctx.author.id]["queue"][y], stream[ctx.author.id]["queue"][x] = stream[ctx.author.id]["queue"][x], stream[ctx.author.id]["queue"][y]
+        with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
+        await ctx.message.add_reaction("✅")
+
+
 ### Infos stream
 @bot.command(name='mystream', aliases=['ms'])
 @commands.has_role(streamer_id)

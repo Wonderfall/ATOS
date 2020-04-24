@@ -48,6 +48,7 @@ streamer_help_text=f"""
 :white_small_square: `{bot_prefix}setstream` : mettre en place les codes d'accès au stream *(paramètres jeu-dépendant)*.
 :white_small_square: `{bot_prefix}addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.
 :white_small_square: `{bot_prefix}rmstream` : retirer un set de la stream queue *(paramètre : n° | liste de n°)*.
+:white_small_square: `{bot_prefix}swapstream` : interchanger deux sets de la stream queue *(paramètres : n°1 | n°2)*.
 """
 
 lag_text=f"""
