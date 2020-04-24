@@ -25,7 +25,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.9"
+version = "5.10"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -927,6 +927,7 @@ async def get_available_category(match_round):
             name=desired_cat,
             reason='Since no category was available, a new one was created'
         )
+        # kwarg 'position' will be supported in next discord.py release, for now we have to edit
         await new_category.edit(position = guild.get_channel(tournoi_cat_id).position + 1)
         return new_category
 
