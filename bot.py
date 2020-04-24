@@ -1,6 +1,7 @@
 import discord, random, logging, os, json, re, achallonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
 import aiofiles, aiofiles.os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.jobstores.base import JobLookupError
 from babel.dates import format_date, format_time
 from discord.ext import commands
 from pathlib import Path
@@ -278,7 +279,6 @@ async def start_tournament(ctx):
 @commands.check(tournament_is_underway)
 async def end_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     if datetime.datetime.now() > tournoi["début_tournoi"]:
         await async_http_retry(achallonge.tournaments.finalize, tournoi["id"])
@@ -290,7 +290,7 @@ async def end_tournament(ctx):
     # Remove underway task
     try:
         scheduler.remove_job('underway_tournament')
-    except:
+    except JobLookupError:
         pass
     
     # Annoucements (including results)
@@ -311,19 +311,12 @@ async def end_tournament(ctx):
     for file in list(Path(Path(participants_path).parent).rglob('*.bak')):
         await aiofiles.os.remove(file)
 
-    # Remove tournament categories
-    await purge_categories()
-
     # Change presence back to default
     await bot.change_presence(activity=discord.Game(f'{name} • {version}'))
 
-    # Remove all the Challenger roles (it can take time)
-    challenger = ctx.guild.get_role(challenger_id)
-    for inscrit in participants:
-        try:
-            await ctx.guild.get_member(inscrit).remove_roles(challenger)
-        except discord.HTTPException:
-            pass
+    # Remove tournament roles & categories
+    await purge_categories()
+    await purge_roles()
 
 
 ### S'execute à chaque lancement, permet de relancer les tâches en cas de crash
@@ -613,7 +606,7 @@ async def rappel_check_in():
             del rappel_msg[:50] # and send by groups of 50 people
 
     await bot.get_channel(check_in_channel_id).send(f"*Vous avez jusqu'à {format_time(tournoi['fin_check-in'], format='short', locale=language)}, sinon vous serez désinscrit(s) automatiquement.*")
-    
+
 
 ### Fin du check-in
 async def end_check_in():
@@ -625,7 +618,7 @@ async def end_check_in():
 
     try:
         scheduler.remove_job('rappel_check_in')
-    except:
+    except JobLookupError:
         pass
 
     for inscrit in list(participants):
@@ -675,10 +668,7 @@ async def purge_channels():
 
     for channel_id in [check_in_channel_id, queue_channel_id, scores_channel_id]:
         channel = guild.get_channel(channel_id)
-        async for message in channel.history():
-            await message.delete()
-
-    await purge_categories()
+        await channel.purge(limit=None)
 
 
 ### Nettoyer les catégories liées aux tournois
@@ -687,8 +677,21 @@ async def purge_categories():
 
     for category, channels in guild.by_category():
         if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
-            for channel in channels: await channel.delete() # first, delete the channels
+            for channel in channels:
+                await channel.delete() # first, delete the channels
             await category.delete() # then delete the category
+
+
+### Nettoyer les rôles liés aux tournois
+async def purge_roles():
+    guild = bot.get_guild(id=guild_id)
+    challenger = guild.get_role(id=challenger_id)
+
+    for member in challenger.members:
+        try:
+            await member.remove_roles(challenger)
+        except (discord.HTTPException, discord.Forbidden):
+            pass
 
 
 ### Affiche le bracket en cours
