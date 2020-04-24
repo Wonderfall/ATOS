@@ -24,7 +24,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.8"
+version = "5.9"
 author = "Wonderfall"
 name = "A.T.O.S."
 
