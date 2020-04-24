@@ -184,7 +184,7 @@ async def auto_setup_tournament():
                 microsecond = 0 # for dateparser to work
             )
 
-            # If the tournament is supposed to be in less than 36 hours, let's go !
+            # If the tournament is supposed to be in less than inscriptions_opening (hours), let's go !
             if abs(next_date - datetime.datetime.now().astimezone()) < datetime.timedelta(hours = preferences['inscriptions_opening']):
 
                 new_tournament = await async_http_retry(
@@ -199,10 +199,14 @@ async def auto_setup_tournament():
                     start_at=next_date
                 )
 
-                tournaments[tournament]["edition"] += 1
-                with open(auto_mode_path, 'w') as f: yaml.dump(tournaments, f)
-
                 await init_tournament(new_tournament["id"])
+
+                # Check if the tournamet was configured
+                with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+                if tournoi != {}:
+                    tournaments[tournament]["edition"] += 1
+                    with open(auto_mode_path, 'w') as f: yaml.dump(tournaments, f)
+
                 return
 
 
