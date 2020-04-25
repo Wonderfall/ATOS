@@ -912,15 +912,21 @@ async def forfeit_match(ctx):
         await ctx.message.add_reaction("✅")
 
 
+def cat_is_available(category, desired_cat):
+    return all(
+        isinstance(category, discord.CategoryChannel),
+        category.name.lower() == desired_cat,
+        len(category.channels) < 50
+    )
+
 ### Get and return a category
 async def get_available_category(match_round):
-
     guild = bot.get_guild(id=guild_id)
     desired_cat = 'winner bracket' if match_round > 0 else 'looser bracket'
 
-    for category, channels in guild.by_category():
-        if category != None and category.name.lower() == desired_cat and len(channels) < 50:
-            return category
+    # by_category() doesn't return a category if it has no channels, so we use a list comprehension
+    for category in [cat for cat in guild.channels if cat_is_available(cat, desired_cat)]:
+        return category
 
     else:
         new_category = await guild.create_category(
