@@ -1,5 +1,9 @@
 # A.T.O.S. - Automated Tournament Organizer for Smash
 
+<p align="center">
+  <img src="https://i.imgur.com/2lEbl9Y.png">
+</p>
+
 ## What?
 It stands for *Automated Tournament Organizer for Smash*, or more precisely *Automation Tools for Organizing Smash*. It's designed to run on a Discord server and it can *take it from here* by managing a Smash tournament with Challonge for the bracket stuff.
 
