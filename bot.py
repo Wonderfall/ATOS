@@ -990,17 +990,17 @@ async def launch_matches(guild, bracket):
                 else:
                     gaming_channel_annonce += ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
 
+                    scheduler.add_job(
+                        check_channel_activity,
+                        id = f'check activity of set {gaming_channel.name}',
+                        args = [gaming_channel, player1, player2],
+                        run_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
+                    )
+
                 if is_queued_for_stream(match["suggested_play_order"]):
                     gaming_channel_annonce += ":tv: **Vous jouerez on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
 
                 await gaming_channel.send(gaming_channel_annonce)
-
-                scheduler.add_job(
-                    check_channel_activity,
-                    id = f'check activity of set {gaming_channel.name}',
-                    args = [gaming_channel, player1, player2],
-                    run_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
-                )
 
             on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
             top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
