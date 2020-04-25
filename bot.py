@@ -675,11 +675,9 @@ async def purge_channels():
 async def purge_categories():
     guild = bot.get_guild(id=guild_id)
 
-    for category, channels in guild.by_category():
-        if category != None and category.name.lower() in ["winner bracket", "looser bracket"]:
-            for channel in channels:
-                await channel.delete() # first, delete the channels
-            await category.delete() # then delete the category
+    for category in [cat for cat in guild.categories if cat.name.lower() in ["winner bracket", "looser bracket"]]:
+        for channel in category.channels: await channel.delete() # first, delete the channels
+        await category.delete() # then delete the category
 
 
 ### Nettoyer les rôles liés aux tournois
@@ -912,20 +910,13 @@ async def forfeit_match(ctx):
         await ctx.message.add_reaction("✅")
 
 
-def cat_is_available(category, desired_cat):
-    return all(
-        isinstance(category, discord.CategoryChannel),
-        category.name.lower() == desired_cat,
-        len(category.channels) < 50
-    )
-
 ### Get and return a category
 async def get_available_category(match_round):
     guild = bot.get_guild(id=guild_id)
     desired_cat = 'winner bracket' if match_round > 0 else 'looser bracket'
 
     # by_category() doesn't return a category if it has no channels, so we use a list comprehension
-    for category in [cat for cat in guild.channels if cat_is_available(cat, desired_cat)]:
+    for category in [cat for cat in guild.categories if cat.name.lower() == desired_cat and len(cat.channels) < 50]:
         return category
 
     else:
