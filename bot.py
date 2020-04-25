@@ -115,7 +115,7 @@ async def init_tournament(url_or_id):
             await get_ranking_csv(tournoi)
         except (KeyError, ValueError):
             await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **données de ranking introuvables**.\n"
-                                                      f"*Désactivez le bulk mode avec `!set bulk_mode off` si vous ne souhaitez pas utiliser de ranking.*")
+                                                      f"*Désactivez le bulk mode avec `{bot_prefix}set bulk_mode off` si vous ne souhaitez pas utiliser de ranking.*")
             return
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
@@ -233,12 +233,12 @@ async def start_tournament(ctx):
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé ! Voici le bracket : {tournoi['url']}\n"
-                                                   f":white_small_square: Vous pouvez y accéder à tout moment avec la commande `!bracket`.\n"
-                                                   f":white_small_square: Vous pouvez consulter les liens de stream avec la commande `!stream`.")
+                                                   f":white_small_square: Vous pouvez y accéder à tout moment avec la commande `{bot_prefix}bracket`.\n"
+                                                   f":white_small_square: Vous pouvez consulter les liens de stream avec la commande `{bot_prefix}stream`.")
 
     score_annonce = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
-                     f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `!win`.\n"
-                     f":white_small_square: Le message du score doit contenir le **format suivant** : `!win 2-0, 3-2, 3-1, ...`.\n"
+                     f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `{bot_prefix}win`.\n"
+                     f":white_small_square: Le message du score doit contenir le **format suivant** : `{bot_prefix}win 2-0, 3-2, 3-1, ...`.\n"
                      f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
                      f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
                      f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.\n\n"
@@ -246,27 +246,27 @@ async def start_tournament(ctx):
 
     await bot.get_channel(scores_channel_id).send(score_annonce)
 
-    queue_annonce = (":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n"
-                     ":white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n"
-                     ":white_small_square: Tout set devant se jouer en BO5 (top 8) est indiqué ici, et également dans votre channel.\n"
-                     ":white_small_square: La personne qui commence les bans est indiquée dans votre channel (en cas de besoin : `!flip`).\n\n"
-                     ":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les 15 minutes qui suivent sa création__.")
+    queue_annonce = (f":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n"
+                     f":white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n"
+                     f":white_small_square: Tout set devant se jouer en BO5 (top 8) est indiqué ici, et également dans votre channel.\n"
+                     f":white_small_square: La personne qui commence les bans est indiquée dans votre channel (en cas de besoin : `{bot_prefix}flip`).\n\n"
+                     f":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les 15 minutes qui suivent sa création__.")
 
     await bot.get_channel(queue_channel_id).send(queue_annonce)
 
     tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n"
                        f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
                        f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
-                       f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `!win`.\n"
-                       f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `!dq` à tout moment.\n"
-                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `!lag` pour résoudre la situation.\n\n"
+                       f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n"
+                       f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `{bot_prefix}dq` à tout moment.\n"
+                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n\n"
                        f":fire: Le **top 8** commencera, d'après le bracket :\n"
                        f"- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n"
                        f"- En **looser round {-tournoi['round_looser_top8']}**\n\n"
                        f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
 
     if tournoi["game"] == "Project+":
-        tournoi_annonce += f"\n\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `!desync` pour résoudre la situation."
+        tournoi_annonce += f"\n\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `{bot_prefix}desync` pour résoudre la situation."
 
     await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
@@ -568,7 +568,7 @@ async def start_check_in():
 
     await bot.get_channel(check_in_channel_id).send(f"<@&{challenger_id}> Le check-in pour **{tournoi['name']}** a commencé ! "
                                                     f"Vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
-                                                    f":white_small_square: Utilisez `!in` pour confirmer votre inscription\n:white_small_square: Utilisez `!out` pour vous désinscrire\n\n"
+                                                    f":white_small_square: Utilisez `{bot_prefix}in` pour confirmer votre inscription\n:white_small_square: Utilisez `{bot_prefix}out` pour vous désinscrire\n\n"
                                                     f"*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*")
 
 
@@ -977,13 +977,13 @@ async def launch_matches(guild, bracket):
 
                 gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}>\n"
                                           f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
-                                          f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `!stages`.\n"
-                                          f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `!lag` pour résoudre la situation.\n"
-                                          f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `!win`.\n\n"
+                                          f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{bot_prefix}stages`.\n"
+                                          f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
+                                          f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n\n"
                                           f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
 
                 if tournoi["game"] == "Project+":
-                    gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `!buffer [ping]`.\n"
+                    gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{bot_prefix}buffer [ping]`.\n"
 
                 if is_top8(match["round"]):
                     gaming_channel_annonce += ":five: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
@@ -1424,14 +1424,14 @@ async def send_lag_text(ctx):
 
     if tournoi['game'] == 'Project+':
         msg += (f"\n{gamelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
-                ":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
-                "- Baisser la résolution interne dans les paramètres graphiques.\n"
-                "- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
-                "- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
-                ":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
-                "- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `!buffer` en fournissant votre ping.\n"
-                "- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
-                ":white_small_square: Utilisez la commande `!desync` en cas de desync suspectée.")
+                f":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
+                f"- Baisser la résolution interne dans les paramètres graphiques.\n"
+                f"- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
+                f"- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
+                f":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
+                f"- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `{bot_prefix}buffer` en fournissant votre ping.\n"
+                f"- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
+                f":white_small_square: Utilisez la commande `{bot_prefix}desync` en cas de desync suspectée.")
 
     await ctx.send(msg)
 
@@ -1625,7 +1625,7 @@ async def check_settings(ctx):
         parametres += f":white_small_square: **{parametre}** : *{preferences[parametre]}*\n"
 
     await ctx.send(f":gear: __Liste des paramètres modifiables sans redémarrage__ :\n{parametres}\n"
-                   f"Vous pouvez modifier chacun de ces paramètres avec la commande `!set [paramètre] [valeur]`.")
+                   f"Vous pouvez modifier chacun de ces paramètres avec la commande `{bot_prefix}set [paramètre] [valeur]`.")
 
 
 ### Desync message
