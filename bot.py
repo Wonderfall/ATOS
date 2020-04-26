@@ -25,9 +25,13 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.11"
+version = "5.12"
 author = "Wonderfall"
 name = "A.T.O.S."
+
+### Cogs
+initial_extensions = ['cogs.dev_commands']
+
 
 ### Init things
 bot = commands.Bot(command_prefix=commands.when_mentioned_or(bot_prefix)) # Set prefix for commands
@@ -1638,7 +1642,7 @@ async def send_desync_help(ctx):
 ### On command error : invoker has not enough permissions
 @bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, (commands.CheckFailure, commands.MissingRole)):
+    if isinstance(error, (commands.CheckFailure, commands.MissingRole, commands.NotOwner)):
         await ctx.message.add_reaction("🚫")
     elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
         await ctx.message.add_reaction("💿")
@@ -1646,10 +1650,17 @@ async def on_command_error(ctx, error):
         await ctx.message.add_reaction("❄️")
     elif isinstance(error, commands.CommandNotFound):
         await ctx.message.add_reaction("❔")
+    elif isinstance(error, commands.CommandInvokeError):
+        await ctx.message.add_reaction("⚠️")
 
 
 #### Scheduler
 scheduler.start()
+
+### Add base cogs
+if __name__ == '__main__':
+    for extension in initial_extensions:
+        bot.load_extension(extension)
 
 #### Lancement du bot
 bot.run(bot_secret, bot = True, reconnect = True)
