@@ -398,7 +398,7 @@ async def annonce_inscription():
 
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
 
-    async for message in inscriptions_channel.history(): await message.delete()
+    await inscriptions_channel.purge(limit=None)
 
     annonce_msg = await inscriptions_channel.send(annonce)
     tournoi['annonce_id'] = annonce_msg.id
