@@ -722,7 +722,7 @@ async def purge_categories():
 ### Nettoyer les rôles liés aux tournois
 async def purge_roles():
     guild = bot.get_guild(id=guild_id)
-    challenger = guild.get_role(id=challenger_id)
+    challenger = guild.get_role(challenger_id)
 
     for member in challenger.members:
         try:
@@ -1169,8 +1169,8 @@ async def add_stream(ctx, *args: int):
     if tournoi["statut"] == "pending":
         for arg in args: stream[ctx.author.id]["queue"].append(arg)
         with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
-        await ctx.message.add_reaction("☑️")
-        await ctx.send(f"<@{ctx.author.id}> Sets ajoutés à la stream queue, toutefois ils n'ont pas été vérifiés, le bracket n'ayant pas commencé.")
+        await ctx.message.add_reaction("✅")
+        await ctx.send(f"<@{ctx.author.id}> Sets ajoutés à la stream queue : toutefois ils n'ont pas été vérifiés, le bracket n'ayant pas commencé.")
         return
 
     # Otherwise we should check if the sets are open
