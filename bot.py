@@ -9,7 +9,7 @@ from achallonge import ChallongeException
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
-from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, can_check_in, is_streaming
+from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, is_streaming
 from utils.stream import is_on_stream, is_queued_for_stream
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
@@ -25,7 +25,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.12"
+version = "5.13"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -101,6 +101,7 @@ async def init_tournament(url_or_id):
         "fin_inscription": debut_tournoi - datetime.timedelta(minutes = preferences['inscriptions_closing']),
         "use_guild_name": preferences['use_guild_name'],
         "bulk_mode": preferences['bulk_mode'],
+        "reaction_mode": preferences['reaction_mode'],
         "warned": [],
         "timeout": []
     }
@@ -348,7 +349,7 @@ async def reload_tournament():
     print("Scheduled tasks for a tournament have been reloaded.")
 
     # Prendre les inscriptions manquées
-    if datetime.datetime.now() < tournoi["fin_check-in"]:
+    if datetime.datetime.now() < tournoi["fin_inscription"] and tournoi["reaction_mode"]:
 
         annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
 
@@ -383,14 +384,17 @@ async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    annonce = (f"{server_logo} **{tournoi['name']}** - {gamelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
-               f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
-               f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)}\n"
-               f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-               f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'disponible peu de temps avant le début du tournoi'}\n"
-               f":white_small_square: __Format__ : singles, double élimination, ruleset : <#{gamelist[tournoi['game']]['ruleset']}>\n\n"
-               f"Merci de vous inscrire en ajoutant une réaction ✅ à ce message. Vous pouvez vous désinscrire en la retirant à tout moment.\n"
-               f"*Note : votre **pseudonyme {'sur ce serveur' if tournoi['use_guild_name'] else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*")
+    annonce = (
+        f"{server_logo} **{tournoi['name']}** - {gamelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
+        f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
+        f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)} "
+        f"(fermeture des inscriptions à {format_time(tournoi['fin_inscription'], format='short', locale=language)})\n"
+        f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
+        f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'disponible peu de temps avant le début du tournoi'}\n"
+        f":white_small_square: __Format__ : singles, double élimination, ruleset : <#{gamelist[tournoi['game']]['ruleset']}>\n\n"
+        f"Vous pouvez vous inscrire/désinscrire {'en ajoutant/retirant la réaction ✅ à ce message' if tournoi['reaction_mode'] else f'avec les commandes `{bot_prefix}in`/`{bot_prefix}out`'}.\n"
+        f"*Note : votre **pseudonyme {'sur ce serveur' if tournoi['use_guild_name'] else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*"
+    )
 
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
 
@@ -400,7 +404,10 @@ async def annonce_inscription():
     tournoi['annonce_id'] = annonce_msg.id
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-    await annonce_msg.add_reaction("✅")
+    if tournoi['reaction_mode']:
+        await annonce_msg.add_reaction("✅")
+    
+    await annonce_msg.pin()
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! <@&{gamelist[tournoi['game']]['role']}>\n"
                                                    f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
@@ -452,6 +459,7 @@ async def inscrire(member):
             waiting_list_msg = await inscriptions_channel.send(":hourglass: __Liste d'attente__ :\n")
             tournoi['waiting_list_id'] = waiting_list_msg.id
             with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
+            await waiting_list_msg.pin()
 
         waiting_list[member.id] = { "display_name": member.display_name if tournoi['use_guild_name'] else str(member) }
 
@@ -504,11 +512,12 @@ async def desinscrire(member):
             del participants[member.id]
             with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
 
-            try:
-                inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-                await inscription.remove_reaction("✅", member)
-            except (discord.HTTPException, discord.NotFound):
-                pass
+            if tournoi['reaction_mode']:
+                try:
+                    inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+                    await inscription.remove_reaction("✅", member)
+                except (discord.HTTPException, discord.NotFound):
+                    pass
 
             await update_annonce()
 
@@ -639,8 +648,9 @@ async def end_check_in():
 async def end_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-    annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-    await annonce.clear_reaction("✅")
+    if tournoi["reaction_mode"]:
+        annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+        await annonce.clear_reaction("✅")
 
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
@@ -648,22 +658,45 @@ async def end_inscription():
         await seed_participants()
 
 
-### Prise en charge du check-in et check-out
+async def check_in(member):
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    participants[member.id]["checked_in"] = True
+    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+    await member.send("Tu as été check-in avec succès. Tu n'as plus qu'à patienter jusqu'au début du tournoi !")
+
+
+### Prise en charge des inscriptions, désinscriptions, check-in et check-out
 @bot.command(aliases=['in', 'out'])
-@commands.check(can_check_in)
-@commands.cooldown(1, 30, type=commands.BucketType.user)
+@commands.check(tournament_is_pending)
 @commands.max_concurrency(1, wait=True)
-async def check_in(ctx):
+async def participants_management(ctx):
+
+    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if ctx.invoked_with == 'out':
-        await desinscrire(ctx.author)
 
-    else: # either in or check_in
-        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-        participants[ctx.author.id]["checked_in"] = True
-        with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+        if ctx.channel.id in [check_in_channel_id, inscriptions_channel_id] and ctx.author.id in participants:
+            await desinscrire(ctx.author)
+            await ctx.message.add_reaction("✅")
 
-    await ctx.message.add_reaction("✅")
+        else:
+            await ctx.message.add_reaction("🚫")
+
+    elif ctx.invoked_with == 'in':
+
+        now = datetime.datetime.now()
+
+        if ctx.channel.id == check_in_channel_id and ctx.author.id in participants and tournoi["fin_check-in"] > now > tournoi["début_check-in"]:
+            await check_in(ctx.author)
+            await ctx.message.add_reaction("✅")
+    
+        elif ctx.channel.id == inscriptions_channel_id and ctx.author.id not in participants and now < tournoi["fin_inscription"]:
+            await inscrire(ctx.author)
+            await ctx.message.add_reaction("✅")
+
+        else:
+            await ctx.message.add_reaction("🚫")
 
 
 ### Nettoyer les channels liés aux tournois
@@ -1553,7 +1586,7 @@ async def on_raw_reaction_add(event):
 
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-        if event.message_id == tournoi["annonce_id"]:
+        if tournoi["reaction_mode"] and event.message_id == tournoi["annonce_id"]:
             await inscrire(event.member) # available for REACTION_ADD only
 
     elif (manage_game_roles == True) and (event.channel_id == roles_channel_id):
@@ -1569,7 +1602,7 @@ async def on_raw_reaction_remove(event):
 
         with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
-        if event.message_id == tournoi["annonce_id"]:
+        if tournoi["reaction_mode"] and event.message_id == tournoi["annonce_id"]:
             await desinscrire(bot.get_guild(id=guild_id).get_member(event.user_id)) # event.member not available for REACTION_REMOVE
 
     elif (manage_game_roles == True) and (event.channel_id == roles_channel_id):

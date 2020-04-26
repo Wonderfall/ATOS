@@ -1,5 +1,6 @@
 auto_mode: False
 bulk_mode: False
+reaction_mode: True
 use_guild_name: True
 check_in_opening: 60 # MINUTES before tournament
 check_in_closing: 15 # MINUTES before tournament
