@@ -15,6 +15,7 @@ COPY docker/run.sh /usr/local/bin/run.sh
 
 COPY bot.py .
 COPY utils ./utils
+COPY cogs ./cogs
 
 RUN chmod +x /usr/local/bin/run.sh
 
