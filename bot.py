@@ -486,6 +486,8 @@ async def update_waiting_list():
     for joueur in list(waiting_list)[:20]:
         new_waiting_list += f":white_small_square: {waiting_list[joueur]['display_name']}\n"
 
+    new_waiting_list += f"\n**{len(waiting_list)} personne(s)** au total sur la liste d'attente."
+
     await old_waiting_list.edit(content=new_waiting_list)
 
 
