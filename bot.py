@@ -391,7 +391,7 @@ async def annonce_inscription():
         f"(fermeture des inscriptions à {format_time(tournoi['fin_inscription'], format='short', locale=language)})\n"
         f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
         f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'disponible peu de temps avant le début du tournoi'}\n"
-        f":white_small_square: __Format__ : singles, double élimination, ruleset : <#{gamelist[tournoi['game']]['ruleset']}>\n\n"
+        f":white_small_square: __Format__ : singles, double élimination (ruleset : <#{gamelist[tournoi['game']]['ruleset']}>)\n\n"
         f"Vous pouvez vous inscrire/désinscrire {'en ajoutant/retirant la réaction ✅ à ce message' if tournoi['reaction_mode'] else f'avec les commandes `{bot_prefix}in`/`{bot_prefix}out`'}.\n"
         f"*Note : votre **pseudonyme {'sur ce serveur' if tournoi['use_guild_name'] else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*"
     )
@@ -1662,7 +1662,8 @@ async def check_settings(ctx):
         parametres += f":white_small_square: **{parametre}** : *{preferences[parametre]}*\n"
 
     await ctx.send(f":gear: __Liste des paramètres modifiables sans redémarrage__ :\n{parametres}\n"
-                   f"Vous pouvez modifier chacun de ces paramètres avec la commande `{bot_prefix}set [paramètre] [valeur]`.")
+                   f"Vous pouvez modifier chacun de ces paramètres avec la commande `{bot_prefix}set [paramètre] [valeur]`.\n"
+                   f"*Ces paramètres ne s'appliquent qu'au moment de la création d'un tournoi, et ne peuvent pas changer jusqu'à sa fin.*")
 
 
 ### Desync message
