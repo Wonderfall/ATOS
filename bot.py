@@ -1560,7 +1560,7 @@ async def send_help(ctx):
     await ctx.send(f"**{name} {version}** - *Made by {author} with* :heart:\n{help_text}\n")
     author_roles = [y.id for y in ctx.author.roles]
     if challenger_id in author_roles: await ctx.send(challenger_help_text) # challenger help
-    if to_id in author_roles: await ctx.send(admin_help_text) # admin help
+    if to_id in author_roles or await ctx.bot.is_owner(ctx.author): await ctx.send(admin_help_text) # admin help
     if streamer_id in author_roles: await ctx.send(streamer_help_text) # streamer help
 
 
