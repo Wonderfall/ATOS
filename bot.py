@@ -393,8 +393,13 @@ async def annonce_inscription():
         f"Vous pouvez vous inscrire/désinscrire {'en ajoutant/retirant la réaction ✅ à ce message' if tournoi['reaction_mode'] else f'avec les commandes `{bot_prefix}in`/`{bot_prefix}out`'}.\n"
         f"*Note : votre **pseudonyme {'sur ce serveur' if tournoi['use_guild_name'] else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*"
     )
-
+    
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
+
+    if tournoi['reaction_mode']:
+        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=False)
+    else:
+        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=True)
 
     await inscriptions_channel.purge(limit=None)
 
@@ -519,6 +524,8 @@ async def start_check_in():
 
     challenger = guild.get_role(challenger_id)
 
+    await bot.get_channel(check_in_channel_id).set_permissions(challenger, send_messages=False)
+
     for inscrit in participants:
         await guild.get_member(inscrit).add_roles(challenger)
 
@@ -531,6 +538,8 @@ async def start_check_in():
                                                     f"Vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
                                                     f":white_small_square: Utilisez `{bot_prefix}in` pour confirmer votre inscription\n:white_small_square: Utilisez `{bot_prefix}out` pour vous désinscrire\n\n"
                                                     f"*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*")
+
+    await bot.get_channel(check_in_channel_id).set_permissions(challenger, send_messages=True)
 
 
 ### Rappel de check-in
@@ -575,6 +584,7 @@ async def end_check_in():
     guild = bot.get_guild(id=guild_id)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
+    await bot.get_channel(check_in_channel_id).set_permissions(guild.get_role(challenger_id), send_messages=False)
     await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :** les personnes n'ayant pas check-in vont être retirées du tournoi.")
 
     try:
@@ -597,6 +607,9 @@ async def end_inscription():
     if tournoi["reaction_mode"]:
         annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
         await annonce.clear_reaction("✅")
+    else:
+        guild = bot.get_guild(id=guild_id)
+        await bot.get_channel(inscriptions_channel_id).set_permissions(guild.default_role, send_messages=False)
 
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
