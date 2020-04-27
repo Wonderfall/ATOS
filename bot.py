@@ -397,9 +397,10 @@ async def annonce_inscription():
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
 
     if tournoi['reaction_mode']:
-        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=False)
+        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=False, add_reactions=False)
     else:
-        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=True)
+        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=True, add_reactions=False)
+        await inscriptions_channel.edit(slowmode_delay=60)
 
     await inscriptions_channel.purge(limit=None)
 
@@ -448,7 +449,10 @@ async def inscrire(member):
         await update_annonce()
 
         try:
-            await member.send(f"Tu t'es inscrit(e) avec succès pour le tournoi **{tournoi['name']}**.")
+            msg = f"Tu t'es inscrit(e) avec succès pour le tournoi **{tournoi['name']}**."
+            if datetime.datetime.now() > tournoi["début_check-in"]:
+                msg += " Tu n'as **pas besoin de check-in** comme le tournoi commence bientôt !"
+            await member.send(msg)
         except discord.Forbidden:
             pass
 
@@ -524,7 +528,8 @@ async def start_check_in():
 
     challenger = guild.get_role(challenger_id)
 
-    await bot.get_channel(check_in_channel_id).set_permissions(challenger, send_messages=False)
+    await bot.get_channel(check_in_channel_id).set_permissions(challenger, read_messages=True, send_messages=False, add_reactions=False)
+    await bot.get_channel(check_in_channel_id).edit(slowmode_delay=60)
 
     for inscrit in participants:
         await guild.get_member(inscrit).add_roles(challenger)
@@ -540,7 +545,7 @@ async def start_check_in():
                                                     f":white_small_square: Utilisez `{bot_prefix}in` pour confirmer votre inscription\n:white_small_square: Utilisez `{bot_prefix}out` pour vous désinscrire\n\n"
                                                     f"*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*")
 
-    await bot.get_channel(check_in_channel_id).set_permissions(challenger, send_messages=True)
+    await bot.get_channel(check_in_channel_id).set_permissions(challenger, read_messages=True, send_messages=True, add_reactions=False)
 
 
 ### Rappel de check-in
@@ -585,7 +590,7 @@ async def end_check_in():
     guild = bot.get_guild(id=guild_id)
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
-    await bot.get_channel(check_in_channel_id).set_permissions(guild.get_role(challenger_id), send_messages=False)
+    await bot.get_channel(check_in_channel_id).set_permissions(guild.get_role(challenger_id), read_messages=True, send_messages=False, add_reactions=False)
     await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :** les personnes n'ayant pas check-in vont être retirées du tournoi.")
 
     try:
@@ -610,7 +615,7 @@ async def end_inscription():
         await annonce.clear_reaction("✅")
     else:
         guild = bot.get_guild(id=guild_id)
-        await bot.get_channel(inscriptions_channel_id).set_permissions(guild.default_role, send_messages=False)
+        await bot.get_channel(inscriptions_channel_id).set_permissions(guild.default_role, read_messages=True, send_messages=False, add_reactions=False)
 
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
