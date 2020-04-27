@@ -591,7 +591,9 @@ async def end_check_in():
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     await bot.get_channel(check_in_channel_id).set_permissions(guild.get_role(challenger_id), read_messages=True, send_messages=False, add_reactions=False)
-    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :** les personnes n'ayant pas check-in vont être retirées du tournoi.")
+    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :**\n"
+                                                    ":white_small_square: Les personnes n'ayant pas check-in vont être retirées du tournoi.\n"
+                                                    ":white_small_square: Rappel : une inscription après le début du check-in ne néccessite pas de check-in.")
 
     try:
         scheduler.remove_job('rappel_check_in')
