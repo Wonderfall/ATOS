@@ -8,7 +8,6 @@ system:
 paths: # can be left as default values
   tournoi: data/tournoi.json
   participants: data/participants.json
-  waiting_list: data/waiting_list.json
   stream: data/stream.json
   ranking: data/ranking.csv
   gamelist: config/gamelist.yml

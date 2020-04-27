@@ -30,6 +30,14 @@ def tournament_is_underway_or_pending(ctx):
     except (FileNotFoundError, TypeError, KeyError):
         return False
 
+# Are inscriptions still open?
+def inscriptions_still_open(ctx):
+    try:
+        with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+        return datetime.now() < tournoi["fin_inscription"]
+    except (FileNotFoundError, TypeError, KeyError):
+        return False
+
 # In channel?
 def in_channel(channel_id):
     async def predicate(ctx):

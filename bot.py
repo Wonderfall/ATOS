@@ -9,7 +9,7 @@ from achallonge import ChallongeException
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
-from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, is_streaming, is_owner_or_to
+from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, is_streaming, is_owner_or_to, inscriptions_still_open
 from utils.stream import is_on_stream, is_queued_for_stream
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
@@ -125,7 +125,6 @@ async def init_tournament(url_or_id):
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
-    with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
     await annonce_inscription()
@@ -306,7 +305,6 @@ async def end_tournament(ctx):
 
     # Reset JSON storage
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
-    with open(waiting_list_path, 'w') as f: json.dump({}, f, indent=4)
     with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
@@ -419,7 +417,6 @@ async def annonce_inscription():
 async def inscrire(member):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if (member.id not in participants) and (len(participants) < tournoi['limite']):
@@ -450,52 +447,25 @@ async def inscrire(member):
         except discord.Forbidden:
             pass
 
-    elif (member.id not in waiting_list) and (len(participants) >= tournoi['limite']):
+    elif tournoi["reaction_mode"] and len(participants) >= tournoi['limite']:
 
         try:
-            tournoi['waiting_list_id']
-        except KeyError:
-            inscriptions_channel = bot.get_channel(inscriptions_channel_id)
-            waiting_list_msg = await inscriptions_channel.send(":hourglass: __Liste d'attente__ :\n")
-            tournoi['waiting_list_id'] = waiting_list_msg.id
-            with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
-            await waiting_list_msg.pin()
-
-        waiting_list[member.id] = { "display_name": member.display_name if tournoi['use_guild_name'] else str(member) }
-
-        with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
-        await update_waiting_list()
-
-        try:
-            await member.send(f"Dû au manque de place, tu es ajouté(e) à la **liste d'attente** pour le tournoi **{tournoi['name']}**. "
-                              f"Maintiens ton inscription seulement si tu es sûr(e) de vouloir participer. Tu seras prévenu(e) si une place se libère !")
+            await member.send(f"Il n'y a malheureusement plus de place pour le tournoi **{tournoi['name']}**. "
+                              f"Retente ta chance plus tard, par exemple à la fin du check-in pour remplacer les absents !")
         except discord.Forbidden:
             pass
 
-
-### Mettre à jour la liste d'attente
-async def update_waiting_list():
-
-    with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
-    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-
-    old_waiting_list = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["waiting_list_id"])
-
-    new_waiting_list = ":hourglass: __Liste d'attente__ *(seuls les 20 premiers sont affichés)* :\n"
-
-    for joueur in list(waiting_list)[:20]:
-        new_waiting_list += f":white_small_square: {waiting_list[joueur]['display_name']}\n"
-
-    new_waiting_list += f"\n**{len(waiting_list)} personne(s)** au total sur la liste d'attente."
-
-    await old_waiting_list.edit(content=new_waiting_list)
+        try:
+            inscription = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+            await inscription.remove_reaction("✅", member)
+        except (discord.HTTPException, discord.NotFound):
+            pass
 
 
 ### Désinscription
 async def desinscrire(member):
 
     with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-    with open(waiting_list_path, 'r+') as f: waiting_list = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if member.id in participants:
@@ -527,30 +497,6 @@ async def desinscrire(member):
                 await member.send(f"Tu es désinscrit(e) du tournoi **{tournoi['name']}**. À une prochaine fois peut-être !")
             except discord.Forbidden:
                 pass
-
-            # If there's a waiting list, add the next waiting player
-            try:
-                next_waiting_player = next(iter(waiting_list))
-            except StopIteration:
-                pass
-            else:
-                await inscrire(member.guild.get_member(next_waiting_player))
-                del waiting_list[next_waiting_player]
-                with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
-
-                await update_waiting_list()
-
-    elif member.id in waiting_list:
-
-        del waiting_list[member.id]
-        with open(waiting_list_path, 'w') as f: json.dump(waiting_list, f, indent=4)
-
-        await update_waiting_list()
-
-        try:
-            await member.send(f"Tu as été retiré(e) de la liste d'attente pour le tournoi **{tournoi['name']}**.")
-        except discord.Forbidden:
-            pass
 
 
 ### Mettre à jour l'annonce d'inscription
@@ -604,7 +550,7 @@ async def rappel_check_in():
 
             if tournoi["fin_check-in"] - datetime.datetime.now() < datetime.timedelta(minutes=10):
                 try:
-                    await guild.get_member(inscrit).send(f"**Attention !** Il ne te reste plus qu'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
+                    await guild.get_member(inscrit).send(f"**Attention !** Il te reste moins d'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
                 except discord.Forbidden:
                     pass
 
@@ -640,10 +586,8 @@ async def end_check_in():
         if participants[inscrit]["checked_in"] == False:
             await desinscrire(guild.get_member(inscrit))
 
-    await bot.get_channel(inscriptions_channel_id).send(
-        ":information_source: **Les absents du check-in ont été retirés** : des places sont peut-être libérées pour des inscriptions de dernière minute.\n"
-        "*Notez que la liste d'attente est prioritaire pour remplacer les absents du check-in.*"
-    )
+    await bot.get_channel(inscriptions_channel_id).send(":information_source: **Les absents du check-in ont été retirés** : "
+                                                        "des places sont peut-être libérées pour des inscriptions de dernière minute.\n")
 
 
 ### Fin des inscriptions
@@ -669,7 +613,7 @@ async def check_in(member):
 
 ### Prise en charge des inscriptions, désinscriptions, check-in et check-out
 @bot.command(aliases=['in', 'out'])
-@commands.check(tournament_is_pending)
+@commands.check(inscriptions_still_open)
 @commands.max_concurrency(1, wait=True)
 async def participants_management(ctx):
 
@@ -687,13 +631,11 @@ async def participants_management(ctx):
 
     elif ctx.invoked_with == 'in':
 
-        now = datetime.datetime.now()
-
-        if ctx.channel.id == check_in_channel_id and ctx.author.id in participants and tournoi["fin_check-in"] > now > tournoi["début_check-in"]:
+        if ctx.channel.id == check_in_channel_id and ctx.author.id in participants and tournoi["fin_check-in"] > datetime.datetime.now() > tournoi["début_check-in"]:
             await check_in(ctx.author)
             await ctx.message.add_reaction("✅")
-    
-        elif ctx.channel.id == inscriptions_channel_id and ctx.author.id not in participants and now < tournoi["fin_inscription"]:
+
+        elif ctx.channel.id == inscriptions_channel_id and ctx.author.id not in participants and len(participants) < tournoi['limite']:
             await inscrire(ctx.author)
             await ctx.message.add_reaction("✅")
 

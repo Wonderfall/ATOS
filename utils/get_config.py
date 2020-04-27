@@ -8,7 +8,6 @@ debug_mode                          = config["system"]["debug"]
 ### File paths
 tournoi_path                        = config["paths"]["tournoi"]
 participants_path                   = config["paths"]["participants"]
-waiting_list_path                   = config["paths"]["waiting_list"]
 stream_path                         = config["paths"]["stream"]
 gamelist_path                       = config["paths"]["gamelist"]
 auto_mode_path                      = config["paths"]["auto_mode"]
