@@ -9,7 +9,7 @@ from achallonge import ChallongeException
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
-from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, is_streaming
+from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, is_streaming, is_owner_or_to
 from utils.stream import is_on_stream, is_queued_for_stream
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
@@ -139,7 +139,7 @@ async def init_tournament(url_or_id):
 
 ### Ajouter un tournoi
 @bot.command(name='setup')
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 async def setup_tournament(ctx, arg):
 
     if re.compile(r"^(https?\:\/\/)?(challonge.com)\/.+$").match(arg):
@@ -218,7 +218,7 @@ async def auto_setup_tournament():
 
 ### Démarrer un tournoi
 @bot.command(name='start')
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 @commands.check(tournament_is_pending)
 async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -280,7 +280,7 @@ async def start_tournament(ctx):
 
 ### Terminer un tournoi
 @bot.command(name='end')
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 @commands.check(tournament_is_underway)
 async def end_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
@@ -747,7 +747,7 @@ async def flipcoin(ctx):
 
 ### Ajout manuel
 @bot.command(name='add')
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 @commands.check(tournament_is_pending)
 async def add_inscrit(ctx):
     for member in ctx.message.mentions:
@@ -757,7 +757,7 @@ async def add_inscrit(ctx):
 
 ### Suppression/DQ manuel
 @bot.command(name='rm')
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 @commands.check(tournament_is_underway_or_pending)
 async def remove_inscrit(ctx):
     for member in ctx.message.mentions:
@@ -1624,7 +1624,7 @@ async def send_help(ctx):
 
 ### Set preference
 @bot.command(name='set', aliases=['turn'])
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 async def set_preference(ctx, arg1, arg2):
     with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
 
@@ -1655,7 +1655,7 @@ async def set_preference(ctx, arg1, arg2):
 
 ### See preferences
 @bot.command(name='settings', aliases=['preferences', 'config'])
-@commands.has_role(to_id)
+@commands.check(is_owner_or_to)
 async def check_settings(ctx):
     with open(preferences_path, 'r+') as f: preferences = yaml.full_load(f)
 

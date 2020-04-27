@@ -39,6 +39,10 @@ def in_channel(channel_id):
         return True
     return commands.check(predicate)
 
+# Is owner or TO
+async def is_owner_or_to(ctx):
+    return to_id in [y.id for y in ctx.author.roles] or await ctx.bot.is_owner(ctx.author)
+
 # Is streaming?
 def is_streaming(ctx):
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
