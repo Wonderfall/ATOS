@@ -617,7 +617,7 @@ async def end_inscription():
         await annonce.clear_reaction("✅")
     else:
         guild = bot.get_guild(id=guild_id)
-        await bot.get_channel(inscriptions_channel_id).set_permissions(guild.default_role, read_messages=True, send_messages=False, add_reactions=False)
+        await bot.get_channel(inscriptions_channel_id).set_permissions(guild.default_role, send_messages=False, add_reactions=False)
 
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
