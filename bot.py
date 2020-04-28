@@ -25,7 +25,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.17"
+version = "5.18"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -128,6 +128,14 @@ async def init_tournament(url_or_id):
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
     with open(stream_path, 'w') as f: json.dump({}, f, indent=4)
 
+    # Ensure permissions
+    guild = bot.get_guild(id=guild_id)
+    challenger = guild.get_role(challenger_id)
+    await bot.get_channel(check_in_channel_id).set_permissions(challenger, read_messages=True, send_messages=False, add_reactions=False)
+    await bot.get_channel(check_in_channel_id).edit(slowmode_delay=60)
+    await bot.get_channel(scores_channel_id).set_permissions(challenger, read_messages=True, send_messages=False, add_reactions=False)
+    await bot.get_channel(queue_channel_id).set_permissions(challenger, read_messages=True, send_messages=False, add_reactions=False)
+
     await annonce_inscription()
 
     scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
@@ -135,6 +143,8 @@ async def init_tournament(url_or_id):
     scheduler.add_job(end_inscription, id='end_inscription', run_date=tournoi["fin_inscription"], replace_existing=True)
 
     await bot.change_presence(activity=discord.Game(tournoi['name']))
+
+    await purge_channels()
 
 
 ### Ajouter un tournoi
@@ -223,6 +233,9 @@ async def auto_setup_tournament():
 async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
+    guild = bot.get_guild(id=guild_id)
+    challenger = guild.get_role(challenger_id)
+
     if datetime.datetime.now() > tournoi["fin_inscription"]:
         await async_http_retry(achallonge.tournaments.start, tournoi["id"])
         tournoi["statut"] = "underway"
@@ -250,6 +263,7 @@ async def start_tournament(ctx):
                      f":satellite_orbital: Chaque score étant **transmis un par un**, il est probable que la communication prenne jusqu'à 30 secondes.")
 
     await bot.get_channel(scores_channel_id).send(score_annonce)
+    await bot.get_channel(scores_channel_id).set_permissions(challenger, read_messages=True, send_messages=True, add_reactions=False)
 
     queue_annonce = (f":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n"
                      f":white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n"
@@ -418,8 +432,6 @@ async def annonce_inscription():
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! Consultez-y les messages épinglés. <@&{gamelist[tournoi['game']]['role']}>\n"
                                                    f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
 
-    await purge_channels()
-
 
 ### Inscription
 async def inscrire(member):
@@ -431,7 +443,7 @@ async def inscrire(member):
 
         participants[member.id] = {
             "display_name": member.display_name if tournoi['use_guild_name'] else str(member),
-            "checked_in": False
+            "checked_in": datetime.datetime.now() > tournoi["début_check-in"]
         }
 
         if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
@@ -443,9 +455,7 @@ async def inscrire(member):
                 )
             )['id']
 
-        if datetime.datetime.now() > tournoi["début_check-in"]:
-            participants[member.id]["checked_in"] = True
-            await member.add_roles(member.guild.get_role(challenger_id))
+        await member.add_roles(member.guild.get_role(challenger_id))
 
         with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
         await update_annonce()
@@ -484,11 +494,10 @@ async def desinscrire(member):
         if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
             await async_http_retry(achallonge.participants.destroy, tournoi['id'], participants[member.id]['challonge'])
 
-        if datetime.datetime.now() > tournoi["début_check-in"]:
-            try:
-                await member.remove_roles(member.guild.get_role(challenger_id))
-            except discord.HTTPException:
-                pass
+        try:
+            await member.remove_roles(member.guild.get_role(challenger_id))
+        except discord.HTTPException:
+            pass
 
         if datetime.datetime.now() < tournoi["fin_inscription"]:
 
@@ -525,16 +534,9 @@ async def update_annonce():
 async def start_check_in():
 
     guild = bot.get_guild(id=guild_id)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     challenger = guild.get_role(challenger_id)
-
-    await bot.get_channel(check_in_channel_id).set_permissions(challenger, read_messages=True, send_messages=False, add_reactions=False)
-    await bot.get_channel(check_in_channel_id).edit(slowmode_delay=60)
-
-    for inscrit in participants:
-        await guild.get_member(inscrit).add_roles(challenger)
 
     scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
 
