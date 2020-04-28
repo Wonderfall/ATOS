@@ -25,7 +25,7 @@ from utils.raw_texts import *
 if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
 
 #### Infos
-version = "5.16"
+version = "5.17"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -102,6 +102,7 @@ async def init_tournament(url_or_id):
         "use_guild_name": preferences['use_guild_name'],
         "bulk_mode": preferences['bulk_mode'],
         "reaction_mode": preferences['reaction_mode'],
+        "restrict_to_role": preferences['restrict_to_role'],
         "warned": [],
         "timeout": []
     }
@@ -395,11 +396,12 @@ async def annonce_inscription():
     )
     
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
+    inscriptions_role = inscriptions_channel.guild.get_role(gamelist[tournoi['game']]['role']) if tournoi["restrict_to_role"] else inscriptions_channel.guild.default_role
 
     if tournoi['reaction_mode']:
-        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=False, add_reactions=False)
+        await inscriptions_channel.set_permissions(inscriptions_role, read_messages=True, send_messages=False, add_reactions=False)
     else:
-        await inscriptions_channel.set_permissions(inscriptions_channel.guild.default_role, send_messages=True, add_reactions=False)
+        await inscriptions_channel.set_permissions(inscriptions_role, read_messages=True, send_messages=True, add_reactions=False)
         await inscriptions_channel.edit(slowmode_delay=60)
 
     await inscriptions_channel.purge(limit=None)
@@ -611,13 +613,15 @@ async def end_check_in():
 ### Fin des inscriptions
 async def end_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
     if tournoi["reaction_mode"]:
         annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
         await annonce.clear_reaction("✅")
     else:
         guild = bot.get_guild(id=guild_id)
-        await bot.get_channel(inscriptions_channel_id).set_permissions(guild.default_role, send_messages=False, add_reactions=False)
+        inscriptions_role = guild.get_role(gamelist[tournoi['game']]['role']) if tournoi["restrict_to_role"] else guild.default_role
+        await bot.get_channel(inscriptions_channel_id).set_permissions(inscriptions_role, read_messages=True, send_messages=False, add_reactions=False)
 
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
