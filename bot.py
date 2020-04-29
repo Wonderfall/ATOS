@@ -6,7 +6,6 @@ from babel.dates import format_date, format_time
 from discord.ext import commands
 from pathlib import Path
 from achallonge import ChallongeException
-from pathlib import Path
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
