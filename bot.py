@@ -1649,8 +1649,8 @@ async def send_desync_help(ctx):
 ### On command error : invoker has not enough permissions
 @bot.event
 async def on_command_error(ctx, error):
-    log.error(f"Error in command {ctx.command.name}", exc_info=error)
     if isinstance(error, (commands.CheckFailure, commands.MissingRole, commands.NotOwner)):
+        log.debug(f"Detected check failure for {ctx.command.name}", exc_info=error)
         await ctx.message.add_reaction("🚫")
     elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
         await ctx.message.add_reaction("💿")
@@ -1659,6 +1659,7 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.CommandNotFound):
         await ctx.message.add_reaction("❔")
     elif isinstance(error, commands.CommandInvokeError):
+        log.error(f"Error while executing command {ctx.command.name}", exc_info=error)
         await ctx.message.add_reaction("⚠️")
 
 @bot.event
