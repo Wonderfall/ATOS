@@ -1,4 +1,4 @@
-import discord, random, logging, os, json, re, achallonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml
+import discord, random, logging, os, json, re, achallonge, dateutil.parser, dateutil.relativedelta, datetime, time, asyncio, yaml, sys
 import aiofiles, aiofiles.os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.base import JobLookupError
@@ -6,6 +6,7 @@ from babel.dates import format_date, format_time
 from discord.ext import commands
 from pathlib import Path
 from achallonge import ChallongeException
+from pathlib import Path
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
@@ -15,6 +16,7 @@ from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
 from utils.http_retry import async_http_retry
 from utils.seeding import get_ranking_csv, seed_participants
+from utils.logging import init_loggers
 
 # Import configuration (variables only)
 from utils.get_config import *
@@ -22,7 +24,7 @@ from utils.get_config import *
 # Import raw texts (variables only)
 from utils.raw_texts import *
 
-if debug_mode == True: logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger("atos")
 
 #### Infos
 version = "5.18"
@@ -43,6 +45,7 @@ scheduler = AsyncIOScheduler()
 #### Notifier de l'initialisation
 @bot.event
 async def on_ready():
+    log.info("Bot successfully connected to Discord.")
     print(f"-------------------------------------")
     print(f"           A.T.O.S. {version}        ")
     print(f"        Automated TO for Smash       ")
@@ -344,7 +347,7 @@ async def reload_tournament():
     try:
         await bot.change_presence(activity=discord.Game(tournoi['name']))
     except KeyError:
-        print("No tournament had to be reloaded.")
+        log.info("No tournament had to be reloaded.")
         return
 
     # Relancer les tâches automatiques
@@ -359,7 +362,7 @@ async def reload_tournament():
         if tournoi["début_check-in"] < datetime.datetime.now() < tournoi["fin_check-in"]:
             scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
 
-    print("Scheduled tasks for a tournament have been reloaded.")
+    log.info("Scheduled tasks for a tournament have been reloaded.")
 
     # Prendre les inscriptions manquées
     if datetime.datetime.now() < tournoi["fin_inscription"] and tournoi["reaction_mode"]:
@@ -389,7 +392,7 @@ async def reload_tournament():
             if inscrit not in id_list:
                 await desinscrire(annonce.guild.get_member(inscrit))
 
-        print("Missed inscriptions were also taken care of.")
+        log.info("Missed inscriptions were also taken care of.")
 
 
 ### Annonce l'inscription
@@ -1647,6 +1650,7 @@ async def send_desync_help(ctx):
 ### On command error : invoker has not enough permissions
 @bot.event
 async def on_command_error(ctx, error):
+    log.error(f"Error in command {ctx.command.name}", exc_info=error)
     if isinstance(error, (commands.CheckFailure, commands.MissingRole, commands.NotOwner)):
         await ctx.message.add_reaction("🚫")
     elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
@@ -1658,14 +1662,30 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.CommandInvokeError):
         await ctx.message.add_reaction("⚠️")
 
+@bot.event
+async def on_error(event, *args, **kwargs):
+    exception = sys.exc_info()
+    log.error(f"Unhandled exception with {event}", exc_info=exception)
 
-#### Scheduler
-scheduler.start()
 
-### Add base cogs
 if __name__ == '__main__':
+    # loggers initialization
+    if debug_mode:
+        level = 10
+    else:
+        level = 20
+    init_loggers(level, Path("./data/logs/"))
+    log.info(f"A.T.O.S. Version {version}")
+    #### Scheduler
+    scheduler.start()
+    ### Add base cogs
     for extension in initial_extensions:
         bot.load_extension(extension)
-
-#### Lancement du bot
-bot.run(bot_secret, bot = True, reconnect = True)
+    #### Lancement du bot
+    try:
+        bot.run(bot_secret, bot = True, reconnect = True)
+    except KeyboardInterrupt:
+        log.info("Crtl-C detected, shutting down...")
+        bot.logout()
+    except Exception as e:
+        log.critical("Unhandled exception.", exc_info=e)
