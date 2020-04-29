@@ -105,6 +105,7 @@ async def init_tournament(url_or_id):
         "bulk_mode": preferences['bulk_mode'],
         "reaction_mode": preferences['reaction_mode'],
         "restrict_to_role": preferences['restrict_to_role'],
+        "check_channel_presence": preferences['check_channel_presence'],
         "warned": [],
         "timeout": []
     }
@@ -1002,7 +1003,7 @@ async def launch_matches(guild, bracket):
                     check_channel_activity,
                     id = f'check activity of set {gaming_channel.name}',
                     args = [gaming_channel, player1, player2],
-                    run_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
+                    run_date = datetime.datetime.now() + datetime.timedelta(minutes = tournoi["check_channel_presence"])
                 )
 
             if is_queued_for_stream(match["suggested_play_order"]):

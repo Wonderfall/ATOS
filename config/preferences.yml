@@ -3,6 +3,7 @@ bulk_mode: False
 reaction_mode: True
 use_guild_name: True
 restrict_to_role: False
+check_channel_presence: 15
 check_in_opening: 60 # MINUTES before tournament
 check_in_closing: 15 # MINUTES before tournament
 inscriptions_opening: 30 # HOURS before tournament, useful for auto-mode ONLY
