@@ -528,7 +528,7 @@ async def update_annonce():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     old_annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
-    new_annonce = re.sub(r'[0-9]{1,2}\/', str(len(participants)) + '/', old_annonce.content)
+    new_annonce = re.sub(r'[0-9]{1,3}\/', str(len(participants)) + '/', old_annonce.content)
     await old_annonce.edit(content=new_annonce)
 
 
