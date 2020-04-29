@@ -947,75 +947,73 @@ async def launch_matches(guild, bracket):
 
     sets = ""
 
-    for match in bracket[:20:]: # "Only" lauch 20 max at once
+    for match in [x for x in bracket if x["underway_at"] == None][:20:]: # "Only" lauch 20 max at once
 
-        if match["underway_at"] == None:
+        await async_http_retry(achallonge.matches.mark_as_underway, tournoi["id"], match["id"])
 
-            await async_http_retry(achallonge.matches.mark_as_underway, tournoi["id"], match["id"])
+        for joueur in participants:
+            if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
+            if participants[joueur]["challonge"] == match["player2_id"]: player2 = guild.get_member(joueur)
 
-            for joueur in participants:
-                if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
-                if participants[joueur]["challonge"] == match["player2_id"]: player2 = guild.get_member(joueur)
+        # Création d'un channel volatile pour le set
+        try:
+            gaming_channel = await guild.create_text_channel(
+                str(match["suggested_play_order"]),
+                overwrites = {
+                    guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                    guild.get_role(to_id): discord.PermissionOverwrite(read_messages=True),
+                    guild.get_role(streamer_id): discord.PermissionOverwrite(read_messages=True),
+                    player1: discord.PermissionOverwrite(read_messages=True),
+                    player2: discord.PermissionOverwrite(read_messages=True)
+                },
+                category = await get_available_category(match['round']),
+                topic = "Channel temporaire pour un set.",
+                reason = f"Lancement du set n°{match['suggested_play_order']}"
+            )
 
-            # Création d'un channel volatile pour le set
-            try:
-                gaming_channel = await guild.create_text_channel(
-                    str(match["suggested_play_order"]),
-                    overwrites = {
-                        guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                        guild.get_role(to_id): discord.PermissionOverwrite(read_messages=True),
-                        guild.get_role(streamer_id): discord.PermissionOverwrite(read_messages=True),
-                        player1: discord.PermissionOverwrite(read_messages=True),
-                        player2: discord.PermissionOverwrite(read_messages=True)
-                    },
-                    category = await get_available_category(match['round']),
-                    topic = "Channel temporaire pour un set.",
-                    reason = f"Lancement du set n°{match['suggested_play_order']}"
+        except discord.HTTPException:
+            gaming_channel_txt = f":video_game: Je n'ai pas pu créer de channel, faites votre set en MP ou dans <#{tournoi_channel_id}>."
+
+            if is_queued_for_stream(match["suggested_play_order"]):
+                await player1.send(f"Tu joueras on stream pour ton prochain set contre **{player2.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
+                await player2.send(f"Tu joueras on stream pour ton prochain set contre **{player1.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
+
+        else:
+            gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
+
+            with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
+
+            gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}>\n"
+                                        f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
+                                        f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{bot_prefix}stages`.\n"
+                                        f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
+                                        f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n\n"
+                                        f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
+
+            if tournoi["game"] == "Project+":
+                gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{bot_prefix}buffer [ping]`.\n"
+
+            if is_top8(match["round"]):
+                gaming_channel_annonce += ":five: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
+            else:
+                gaming_channel_annonce += ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
+
+                scheduler.add_job(
+                    check_channel_activity,
+                    id = f'check activity of set {gaming_channel.name}',
+                    args = [gaming_channel, player1, player2],
+                    run_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
                 )
 
-            except discord.HTTPException:
-                gaming_channel_txt = f":video_game: Je n'ai pas pu créer de channel, faites votre set en MP ou dans <#{tournoi_channel_id}>."
+            if is_queued_for_stream(match["suggested_play_order"]):
+                gaming_channel_annonce += ":tv: **Vous jouerez on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
 
-                if is_queued_for_stream(match["suggested_play_order"]):
-                    await player1.send(f"Tu joueras on stream pour ton prochain set contre **{player2.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
-                    await player2.send(f"Tu joueras on stream pour ton prochain set contre **{player1.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
+            await gaming_channel.send(gaming_channel_annonce)
 
-            else:
-                gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
+        on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
+        top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
 
-                with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
-
-                gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}>\n"
-                                          f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
-                                          f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{bot_prefix}stages`.\n"
-                                          f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
-                                          f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n\n"
-                                          f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
-
-                if tournoi["game"] == "Project+":
-                    gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{bot_prefix}buffer [ping]`.\n"
-
-                if is_top8(match["round"]):
-                    gaming_channel_annonce += ":five: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
-                else:
-                    gaming_channel_annonce += ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
-
-                    scheduler.add_job(
-                        check_channel_activity,
-                        id = f'check activity of set {gaming_channel.name}',
-                        args = [gaming_channel, player1, player2],
-                        run_date = datetime.datetime.now() + datetime.timedelta(minutes=15)
-                    )
-
-                if is_queued_for_stream(match["suggested_play_order"]):
-                    gaming_channel_annonce += ":tv: **Vous jouerez on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
-
-                await gaming_channel.send(gaming_channel_annonce)
-
-            on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
-            top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
-
-            sets += f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
+        sets += f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
 
     if sets != "":
         if len(sets) < 2000:
