@@ -1353,9 +1353,9 @@ async def rappel_matches(guild, bracket):
                         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
                         alerte = (f":timer: **Ce set n'a toujours pas reçu de score !** <@{player1.id}> <@{player2.id}>\n"
-                                  f":white_small_square: Le gagnant est prié de le poster dans <#{scores_channel_id}> dès que possible.\n"
-                                  f":white_small_square: Sous peu, la dernière personne ayant été active sur ce channel sera déclarée vainqueur.\n"
-                                  f":white_small_square: La personne ayant été inactive (d'après le dernier message posté) sera **DQ sans concession** du tournoi.\n")
+                                  f":white_small_square: Le gagnant du set est prié de le poster dans <#{scores_channel_id}> dès que possible.\n"
+                                  f":white_small_square: Dans une dizaine de minutes, les TOs seront alertés qu'une décision doit être prise.\n"
+                                  f":white_small_square: Si une personne est détectée comme inactive, elle sera **DQ automatiquement** du tournoi.\n")
 
                         await gaming_channel.send(alerte)
 
@@ -1400,6 +1400,8 @@ async def rappel_matches(guild, bracket):
 
                         else: # Si pas de différence notable, demander une décision manuelle
                             await gaming_channel.send(f"<@&{to_id}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise")
+
+                        await bot.get_channel(to_channel_id).send(f":information_source: Le set du channel <#{gaming_channel.id}> prend anormalement du temps, une intervention est peut-être nécessaire.")
 
 
 ### Obtenir stagelist
