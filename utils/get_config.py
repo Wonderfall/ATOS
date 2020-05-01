@@ -23,6 +23,7 @@ bot_prefix                          = config["discord"]["prefix"]
 ### System preferences
 greet_new_members                   = config["system"]["greet_new_members"]
 manage_game_roles                   = config["system"]["manage_game_roles"]
+show_unknown_command                = config["system"]["show_unknown_command"]
 
 #### Discord IDs
 guild_id                            = int(config["discord"]["guild"])

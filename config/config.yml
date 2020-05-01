@@ -1,8 +1,9 @@
-# version 5.6
+# version 5.20
 system:
   debug: True
   greet_new_members: True
   manage_game_roles: True
+  show_unknown_command: True
   language: fr_FR # only fr_FR is supported right now
 
 paths: # can be left as default values

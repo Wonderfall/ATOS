@@ -1661,7 +1661,7 @@ async def on_command_error(ctx, error):
         await ctx.message.add_reaction("💿")
     elif isinstance(error, commands.CommandOnCooldown):
         await ctx.message.add_reaction("❄️")
-    elif isinstance(error, commands.CommandNotFound):
+    elif isinstance(error, commands.CommandNotFound) and show_unknown_command:
         await ctx.message.add_reaction("❔")
     elif isinstance(error, commands.CommandInvokeError):
         log.error(f"Error while executing command {ctx.command.name}", exc_info=error)
