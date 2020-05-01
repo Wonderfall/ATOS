@@ -1663,6 +1663,7 @@ async def on_command_error(ctx, error):
         await ctx.message.add_reaction("💿")
     elif isinstance(error, commands.CommandOnCooldown):
         await ctx.message.add_reaction("❄️")
+        await ctx.send(f"<@{ctx.author.id}> **Cooldown** : cette commande sera de nouveau disponible pour toi dans {int(error.retry_after)} secondes.")
     elif isinstance(error, commands.CommandNotFound) and show_unknown_command:
         await ctx.message.add_reaction("❔")
     elif isinstance(error, commands.CommandInvokeError):
