@@ -9,7 +9,7 @@ from achallonge import ChallongeException
 
 # Custom modules
 from utils.json_hooks import dateconverter, dateparser, int_keys
-from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, is_streaming, is_owner_or_to, inscriptions_still_open
+from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, in_combat_channel, is_streaming, is_owner_or_to, inscriptions_still_open
 from utils.stream import is_on_stream, is_queued_for_stream
 from utils.rounds import is_top8, nom_round
 from utils.game_specs import get_access_stream
@@ -1430,7 +1430,8 @@ async def get_ruleset(ctx):
 ### Lag
 @bot.command(name='lag')
 @commands.has_role(challenger_id)
-@commands.cooldown(1, 30, type=commands.BucketType.channel)
+@in_combat_channel()
+@commands.cooldown(1, 120, type=commands.BucketType.channel)
 async def send_lag_text(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
@@ -1448,6 +1449,7 @@ async def send_lag_text(ctx):
                 f"- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
                 f":white_small_square: Utilisez la commande `{bot_prefix}desync` en cas de desync suspectée.")
 
+    await bot.get_channel(to_channel_id).send(f":satellite: **Lag reporté** : les TOs sont invités à consulter le channel <#{ctx.channel.id}>")
     await ctx.send(msg)
 
 

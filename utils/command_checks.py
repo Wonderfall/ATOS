@@ -47,6 +47,15 @@ def in_channel(channel_id):
         return True
     return commands.check(predicate)
 
+# In combat channel?
+def in_combat_channel():
+    async def predicate(ctx):
+        if ctx.channel.category == None or ctx.channel.category.name not in ["winner bracket", "looser bracket"]:
+            await ctx.send(f"<@{ctx.author.id}> Cette commande fonctionne uniquement dans un channel de set.")
+            return False
+        return True
+    return commands.check(predicate)
+
 # Is owner or TO
 async def is_owner_or_to(ctx):
     return to_id in [y.id for y in ctx.author.roles] or await ctx.bot.is_owner(ctx.author)
