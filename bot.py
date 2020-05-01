@@ -16,6 +16,7 @@ from utils.game_specs import get_access_stream
 from utils.http_retry import async_http_retry
 from utils.seeding import get_ranking_csv, seed_participants
 from utils.logging import init_loggers
+from utils.json_stream import participants, dump_participants
 
 # Import configuration (variables only)
 from utils.get_config import *
@@ -26,7 +27,7 @@ from utils.raw_texts import *
 log = logging.getLogger("atos")
 
 #### Infos
-version = "5.19"
+version = "5.20"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -144,6 +145,8 @@ async def init_tournament(url_or_id):
     scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
     scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
     scheduler.add_job(end_inscription, id='end_inscription', run_date=tournoi["fin_inscription"], replace_existing=True)
+
+    scheduler.add_job(dump_participants, 'interval', id='dump_participants', seconds=10, replace_existing=True)
 
     await bot.change_presence(activity=discord.Game(tournoi['name']))
 
@@ -354,10 +357,11 @@ async def reload_tournament():
     if tournoi["statut"] == "underway":
         scheduler.add_job(underway_tournament, 'interval', id='underway_tournament', minutes=1, replace_existing=True)
 
-    elif tournoi["statut"] == "pending":
+    elif datetime.datetime.now() < tournoi["fin_inscription"]:
         scheduler.add_job(start_check_in, id='start_check_in', run_date=tournoi["début_check-in"], replace_existing=True)
         scheduler.add_job(end_check_in, id='end_check_in', run_date=tournoi["fin_check-in"], replace_existing=True)
         scheduler.add_job(end_inscription, id='end_inscription', run_date=tournoi["fin_inscription"], replace_existing=True)
+        scheduler.add_job(dump_participants, 'interval', id='dump_participants', seconds=10, replace_existing=True)
 
         if tournoi["début_check-in"] < datetime.datetime.now() < tournoi["fin_check-in"]:
             scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
@@ -365,32 +369,39 @@ async def reload_tournament():
     log.info("Scheduled tasks for a tournament have been reloaded.")
 
     # Prendre les inscriptions manquées
-    if datetime.datetime.now() < tournoi["fin_inscription"] and tournoi["reaction_mode"]:
+    if datetime.datetime.now() < tournoi["fin_inscription"]:
+        
+        if tournoi["reaction_mode"]:
+            annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
 
-        annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
+            # Avoir une liste des users ayant réagi
+            for reaction in annonce.reactions:
+                if str(reaction.emoji) == "✅":
+                    reactors = await reaction.users().flatten()
+                    break
 
-        with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
+            # Inscrire ceux qui ne sont pas dans les participants
+            id_list = []
 
-        # Avoir une liste des users ayant réagi
-        for reaction in annonce.reactions:
-            if str(reaction.emoji) == "✅":
-                reactors = await reaction.users().flatten()
-                break
+            for reactor in reactors:
+                if reactor.id != bot.user.id:
+                    id_list.append(reactor.id)  # Récupérer une liste des IDs pour plus tard
 
-        # Inscrire ceux qui ne sont pas dans les participants
-        id_list = []
+                    if reactor.id not in participants:
+                        await inscrire(reactor)
 
-        for reactor in reactors:
-            if reactor.id != bot.user.id:
-                id_list.append(reactor.id)  # Récupérer une liste des IDs pour plus tard
+            # Désinscrire ceux qui ne sont plus dans la liste des users ayant réagi
+            for inscrit in participants:
+                if inscrit not in id_list:
+                    await desinscrire(annonce.guild.get_member(inscrit))
+        
+        else:
+            async for message in bot.get_channel(inscriptions_channel_id).history(oldest_first=True):
+                if message.author == bot.user or message.reactions != []:
+                    continue
 
-                if reactor.id not in participants:
-                    await inscrire(reactor)
-
-        # Désinscrire ceux qui ne sont plus dans la liste des users ayant réagi
-        for inscrit in participants:
-            if inscrit not in id_list:
-                await desinscrire(annonce.guild.get_member(inscrit))
+                if not any([bot.user in await reaction.users().flatten() for reaction in message.reactions]):
+                    await bot.process_commands(message)
 
         log.info("Missed inscriptions were also taken care of.")
 
@@ -439,7 +450,6 @@ async def annonce_inscription():
 ### Inscription
 async def inscrire(member):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if (member.id not in participants) and (len(participants) < tournoi['limite']):
@@ -450,17 +460,20 @@ async def inscrire(member):
         }
 
         if tournoi["bulk_mode"] == False or datetime.datetime.now() > tournoi["fin_inscription"]:
-            participants[member.id]["challonge"] = (
-                await async_http_retry(
-                    achallonge.participants.create,
-                    tournoi["id"],
-                    participants[member.id]["display_name"]
-                )
-            )['id']
+            try:
+                participants[member.id]["challonge"] = (
+                    await async_http_retry(
+                        achallonge.participants.create,
+                        tournoi["id"],
+                        participants[member.id]["display_name"]
+                    )
+                )['id']
+            except ChallongeException:
+                del participants[member.id]
+                return
 
         await member.add_roles(member.guild.get_role(challenger_id))
 
-        with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
         await update_annonce()
 
         try:
@@ -489,7 +502,6 @@ async def inscrire(member):
 ### Désinscription
 async def desinscrire(member):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if member.id in participants:
@@ -505,7 +517,6 @@ async def desinscrire(member):
         if datetime.datetime.now() < tournoi["fin_inscription"]:
 
             del participants[member.id]
-            with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
 
             if tournoi['reaction_mode']:
                 try:
@@ -525,7 +536,6 @@ async def desinscrire(member):
 ### Mettre à jour l'annonce d'inscription
 async def update_annonce():
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     old_annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
@@ -558,7 +568,6 @@ async def start_check_in():
 ### Rappel de check-in
 async def rappel_check_in():
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     guild = bot.get_guild(id=guild_id)
@@ -595,7 +604,6 @@ async def rappel_check_in():
 async def end_check_in():
 
     guild = bot.get_guild(id=guild_id)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     await bot.get_channel(check_in_channel_id).set_permissions(guild.get_role(challenger_id), read_messages=True, send_messages=False, add_reactions=False)
     await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :**\n"
@@ -631,13 +639,18 @@ async def end_inscription():
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
     if tournoi["bulk_mode"]:
-        await seed_participants()
+        participants = await seed_participants(participants)
+
+    try:
+        scheduler.remove_job('dump_participants')
+    except JobLookupError:
+        pass
+    finally:
+        dump_participants()
 
 
 async def check_in(member):
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     participants[member.id]["checked_in"] = True
-    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
     await member.send("Tu as été check-in avec succès. Tu n'as plus qu'à patienter jusqu'au début du tournoi !")
 
 
@@ -647,7 +660,6 @@ async def check_in(member):
 @commands.max_concurrency(1, wait=True)
 async def participants_management(ctx):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     if ctx.invoked_with == 'out':
@@ -720,7 +732,7 @@ async def flipcoin(ctx):
 ### Ajout manuel
 @bot.command(name='add')
 @commands.check(is_owner_or_to)
-@commands.check(tournament_is_pending)
+@commands.check(inscriptions_still_open)
 async def add_inscrit(ctx):
     for member in ctx.message.mentions:
         await inscrire(member)
@@ -769,7 +781,6 @@ async def underway_tournament():
 @commands.max_concurrency(1, wait=True)
 async def score_match(ctx, arg):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     winner = participants[ctx.author.id]["challonge"] # Le gagnant est celui qui poste
@@ -880,7 +891,6 @@ async def clean_channels(guild, bracket):
 async def forfeit_match(ctx):
 
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     looser = participants[ctx.author.id]["challonge"]
 
@@ -943,7 +953,6 @@ async def get_available_category(match_round):
 ### Lancer matchs ouverts
 async def launch_matches(guild, bracket):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     sets = ""
@@ -1204,7 +1213,6 @@ async def swap_stream(ctx, arg1: int, arg2: int):
 async def list_stream(ctx):
 
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     try:
@@ -1256,7 +1264,6 @@ async def list_stream(ctx):
 async def call_stream(guild, bracket):
 
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
 
     play_orders = [match["suggested_play_order"] for match in bracket]
 
@@ -1313,7 +1320,6 @@ async def calculate_top8():
 ### Lancer un rappel de matchs
 async def rappel_matches(guild, bracket):
 
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
 
     for match in bracket:
@@ -1688,3 +1694,6 @@ if __name__ == '__main__':
         bot.logout()
     except Exception as e:
         log.critical("Unhandled exception.", exc_info=e)
+    finally:
+        log.info("Shutting down...")
+        dump_participants()

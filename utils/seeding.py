@@ -34,12 +34,8 @@ async def get_ranking_csv(tournoi):
                 break
 
 
-async def seed_participants():
+async def seed_participants(participants):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
-    with open(participants_path, 'r+') as f: participants = json.load(f, object_pairs_hook=int_keys)
-
-    # Backup, just in case
-    with open(f'{participants_path}.bak', 'w') as f: json.dump(participants, f, indent=4)
 
     ranking = {}
 
@@ -78,4 +74,4 @@ async def seed_participants():
                 participants[joueur]['challonge'] = inscrit['id']
                 break
 
-    with open(participants_path, 'w') as f: json.dump(participants, f, indent=4)
+    return participants

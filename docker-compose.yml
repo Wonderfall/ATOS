@@ -4,6 +4,7 @@ services:
   atos:
     build: .
     container_name: atos
+    stop_grace_period: 60s
     restart: unless-stopped
     environment:
       - TZ=Europe/Berlin
