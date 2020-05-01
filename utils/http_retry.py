@@ -12,5 +12,7 @@ async def async_http_retry(func, *args, **kwargs):
                 await asyncio.sleep(1+retry)
             else:
                 raise
+        except asyncio.exceptions.TimeoutError:
+            continue
     else:
         raise ChallongeException(f"Tried '{func.__name__}' several times without success")
