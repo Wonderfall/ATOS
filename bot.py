@@ -1662,13 +1662,13 @@ async def on_command_error(ctx, error):
         await ctx.message.add_reaction("🚫")
     elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
         await ctx.message.add_reaction("💿")
-        await ctx.send(f"<@{ctx.author.id}> Les paramètres de cette commande sont mal renseignés. Utilise `{bot_prefix}help` pour en savoir plus.")
+        await ctx.send(f"<@{ctx.author.id}> Les paramètres de cette commande sont mal renseignés. Utilise `{bot_prefix}help` pour en savoir plus.", delete_after=10)
     elif isinstance(error, commands.CommandOnCooldown):
         await ctx.message.add_reaction("❄️")
-        await ctx.send(f"<@{ctx.author.id}> **Cooldown** : cette commande sera de nouveau disponible pour toi dans {int(error.retry_after)} secondes.")
+        await ctx.send(f"<@{ctx.author.id}> **Cooldown** : cette commande sera de nouveau disponible pour toi dans {int(error.retry_after)} secondes.", delete_after=error.retry_after)
     elif isinstance(error, commands.CommandNotFound) and show_unknown_command:
         await ctx.message.add_reaction("❔")
-        await ctx.send(f"<@{ctx.author.id}> Voulais-tu écrire autre chose ? Utilise `{bot_prefix}help` pour avoir la liste des commandes.")
+        await ctx.send(f"<@{ctx.author.id}> Voulais-tu écrire autre chose ? Utilise `{bot_prefix}help` pour avoir la liste des commandes.", delete_after=10)
     elif isinstance(error, commands.CommandInvokeError):
         log.error(f"Error while executing command {ctx.command.name}", exc_info=error)
         await ctx.message.add_reaction("⚠️")
