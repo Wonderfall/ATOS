@@ -641,7 +641,7 @@ async def end_inscription():
     await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
 
     if tournoi["bulk_mode"]:
-        participants = await seed_participants(participants)
+        await seed_participants(participants)
 
     try:
         scheduler.remove_job('dump_participants')

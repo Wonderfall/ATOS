@@ -73,5 +73,3 @@ async def seed_participants(participants):
             if inscrit['name'] == participants[joueur]['display_name']:
                 participants[joueur]['challonge'] = inscrit['id']
                 break
-
-    return participants
