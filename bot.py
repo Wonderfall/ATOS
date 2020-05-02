@@ -11,7 +11,7 @@ from achallonge import ChallongeException
 from utils.json_hooks import dateconverter, dateparser, int_keys
 from utils.command_checks import tournament_is_pending, tournament_is_underway, tournament_is_underway_or_pending, in_channel, in_combat_channel, is_streaming, is_owner_or_to, inscriptions_still_open
 from utils.stream import is_on_stream, is_queued_for_stream
-from utils.rounds import is_top8, nom_round
+from utils.rounds import is_top8, nom_round, is_bo5
 from utils.game_specs import get_access_stream
 from utils.http_retry import async_http_retry
 from utils.seeding import get_ranking_csv, seed_participants
@@ -108,6 +108,7 @@ async def init_tournament(url_or_id):
         "reaction_mode": preferences['reaction_mode'],
         "restrict_to_role": preferences['restrict_to_role'],
         "check_channel_presence": preferences['check_channel_presence'],
+        "start_bo5": preferences['start_bo5'],
         "warned": [],
         "timeout": []
     }
@@ -274,7 +275,7 @@ async def start_tournament(ctx):
 
     queue_annonce = (f":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n"
                      f":white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n"
-                     f":white_small_square: Tout set devant se jouer en BO5 (top 8) est indiqué ici, et également dans votre channel.\n"
+                     f":white_small_square: Tout set devant se jouer en BO5 est indiqué ici, et également dans votre channel.\n"
                      f":white_small_square: La personne qui commence les bans est indiquée dans votre channel (en cas de besoin : `{bot_prefix}flip`).\n\n"
                      f":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les {tournoi['check_channel_presence']} minutes qui suivent sa création__.")
 
@@ -817,16 +818,21 @@ async def score_match(ctx, arg):
 
     if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
 
-    if is_top8(match[0]["round"]):
+    if is_bo5(match[0]["round"]):
         aimed_score, looser_score, temps_min = 3, [0, 1, 2], 10
     else:
         aimed_score, looser_score, temps_min = 2, [0, 1], 5
 
     debut_set = dateutil.parser.parse(str(match[0]["underway_at"])).replace(tzinfo=None)
 
-    if (int(score[0]) != aimed_score) or (int(score[2]) not in looser_score) or (datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min)):
+    if int(score[0]) != aimed_score or int(score[2]) not in looser_score:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Score incorrect**, ou temps écoulé trop court. Rappel : BO3 jusqu'au top 8 qui a lieu en BO5.")
+        await ctx.send(f"<@{ctx.author.id}> **Score incorrect**, vérifiez par exemple si le set doit se jouer en BO3 ou BO5.")
+        return
+
+    if datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min):
+        await ctx.message.add_reaction("⚠️")
+        await ctx.send(f"<@{ctx.author.id}> **Temps écoulé trop court** pour qu'un résultat soit déjà rentré pour le set.")
         return
 
     for joueur in participants:
@@ -966,6 +972,8 @@ async def launch_matches(guild, bracket):
             if participants[joueur]["challonge"] == match["player1_id"]: player1 = guild.get_member(joueur)
             if participants[joueur]["challonge"] == match["player2_id"]: player2 = guild.get_member(joueur)
 
+        top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
+
         # Création d'un channel volatile pour le set
         try:
             gaming_channel = await guild.create_text_channel(
@@ -994,7 +1002,7 @@ async def launch_matches(guild, bracket):
 
             with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-            gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}>\n"
+            gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {top_8}\n"
                                       f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
                                       f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{bot_prefix}stages`.\n"
                                       f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
@@ -1004,11 +1012,12 @@ async def launch_matches(guild, bracket):
             if tournoi["game"] == "Project+":
                 gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{bot_prefix}buffer [ping]`.\n"
 
-            if is_top8(match["round"]):
-                gaming_channel_annonce += ":five: C'est un set de **top 8** : vous devez le jouer en **BO5** *(best of five)*.\n"
+            if is_bo5(match["round"]):
+                gaming_channel_annonce += ":five: Vous devez jouer ce set en **BO5** *(best of five)*.\n"
             else:
                 gaming_channel_annonce += ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
 
+            if not is_top8(match["round"]):
                 scheduler.add_job(
                     check_channel_activity,
                     id = f'check activity of set {gaming_channel.name}',
@@ -1022,9 +1031,9 @@ async def launch_matches(guild, bracket):
             await gaming_channel.send(gaming_channel_annonce)
 
         on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
-        top_8 = "(**top 8**) :fire:" if is_top8(match["round"]) else ""
+        bo_type = 'BO5' if is_bo5(match['round']) else 'BO3'
 
-        sets += f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
+        sets += f":arrow_forward: **{nom_round(match['round'])}** ({bo_type}) : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
 
     if sets != "":
         if len(sets) < 2000:
@@ -1315,6 +1324,10 @@ async def calculate_top8():
     tournoi["round_winner_top8"] = max(rounds) - 2
     tournoi["round_looser_top8"] = min(rounds) + 3
 
+    # Minimal values, in case of a small tournament
+    if tournoi["round_winner_top8"] < 1: tournoi["round_winner_top8"] = 1
+    if tournoi["round_looser_top8"] > -1: tournoi["round_looser_top8"] = -1
+
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
 
@@ -1330,9 +1343,9 @@ async def rappel_matches(guild, bracket):
             debut_set = dateutil.parser.parse(str(match["underway_at"])).replace(tzinfo=None)
 
             if tournoi['game'] == 'Super Smash Bros. Ultimate':
-                seuil = 42 if is_top8(match["round"]) else 28 # Calculé selon (tps max match * nb max matchs) + 7 minutes
+                seuil = 42 if is_bo5(match["round"]) else 28 # Calculé selon (tps max match * nb max matchs) + 7 minutes
             elif tournoi['game'] == 'Project+':
-                seuil = 47 if is_top8(match["round"]) else 31 # Idem
+                seuil = 47 if is_bo5(match["round"]) else 31 # Idem
             else:
                 return
 

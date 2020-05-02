@@ -8,6 +8,13 @@ def is_top8(match_round):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     return (match_round >= tournoi["round_winner_top8"]) or (match_round <= tournoi["round_looser_top8"])
 
+### Determine whether a match is BO5 or not
+def is_bo5(match_round):
+    with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
+    round_winner_bo5 = tournoi["round_winner_top8"] + tournoi["start_bo5"]
+    round_looser_bo5 = tournoi["round_looser_top8"] - tournoi["start_bo5"]
+    return (match_round >= round_winner_bo5) or (match_round <= round_looser_bo5)
+
 ### Retourner nom du round
 def nom_round(match_round):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
