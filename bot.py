@@ -653,7 +653,10 @@ async def end_inscription():
 
 async def check_in(member):
     participants[member.id]["checked_in"] = True
-    await member.send("Tu as été check-in avec succès. Tu n'as plus qu'à patienter jusqu'au début du tournoi !")
+    try:
+        await member.send("Tu as été check-in avec succès. Tu n'as plus qu'à patienter jusqu'au début du tournoi !")
+    except discord.Forbidden:
+        pass
 
 
 ### Prise en charge des inscriptions, désinscriptions, check-in et check-out
