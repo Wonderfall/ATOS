@@ -9,3 +9,5 @@ check_in_closing: 15 # MINUTES before tournament
 inscriptions_opening: 30 # HOURS before tournament, useful for auto-mode ONLY
 inscriptions_closing: 10 # MINUTES before tournament
 start_bo5: 0 # When to start BO5 (0 = top 8, +1 = top 6, -1 = top 12, etc.)
+full_bo3: False
+full_bo5: False # Has priority over full_bo3

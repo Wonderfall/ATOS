@@ -109,6 +109,8 @@ async def init_tournament(url_or_id):
         "restrict_to_role": preferences['restrict_to_role'],
         "check_channel_presence": preferences['check_channel_presence'],
         "start_bo5": preferences['start_bo5'],
+        "full_bo3": preferences['full_bo3'],
+        "full_bo5": preferences['full_bo5'],
         "warned": [],
         "timeout": []
     }
@@ -286,14 +288,28 @@ async def start_tournament(ctx):
                        f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
                        f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n"
                        f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `{bot_prefix}dq` à tout moment.\n"
-                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n\n"
-                       f":fire: Le **top 8** commencera, d'après le bracket :\n"
-                       f"- En **winner round {tournoi['round_winner_top8']}** (semi-finales)\n"
-                       f"- En **looser round {-tournoi['round_looser_top8']}**\n\n"
-                       f"*L'équipe de TO et moi-même vous souhaitons un excellent tournoi.*")
+                       f":white_small_square: Il est possible d'abandonner son set en cours sans DQ du tournoi avec la commande `{bot_prefix}ff`.\n"
+                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.")
 
     if tournoi["game"] == "Project+":
-        tournoi_annonce += f"\n\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `{bot_prefix}desync` pour résoudre la situation."
+        tournoi_annonce += f"\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `{bot_prefix}desync` pour résoudre la situation."
+
+    tournoi_annonce += (f"\n\n:fire: Le **top 8** commencera, d'après le bracket :\n"
+                        f":white_small_square: En **{nom_round(tournoi['round_winner_top8'])}**\n"
+                        f":white_small_square: En **{nom_round(tournoi['round_looser_top8'])}**\n\n")
+    
+    if tournoi["full_bo3"]:
+        tournoi_annonce += ":three: L'intégralité du tournoi se déroulera en **BO3**."
+    elif tournoi["full_bo5"]:
+        tournoi_annonce += ":five: L'intégralité du tournoi se déroulera en **BO5**."
+    elif tournoi["start_bo5"] != 0:
+        tournoi_annonce += (f":five: Les **BO5** commenceront quant à eux :\n"
+                            f":white_small_square: En **{nom_round(tournoi['round_winner_bo5'])}**\n"
+                            f":white_small_square: En **{nom_round(tournoi['round_looser_bo5'])}**")
+    else:
+        tournoi_annonce += ":five: Les **BO5** commenceront en **top 8**."
+
+    tournoi_annonce += "\n\n*L'équipe de TO et moi-même vous souhaitons un excellent tournoi !*"
 
     await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
@@ -1323,13 +1339,26 @@ async def calculate_top8():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     bracket = await async_http_retry(achallonge.matches.index, tournoi['id'], state=("open", "pending"))
 
+    # Get all rounds from bracket
     rounds = [match["round"] for match in bracket]
+
+    # Calculate top 8
     tournoi["round_winner_top8"] = max(rounds) - 2
     tournoi["round_looser_top8"] = min(rounds) + 3
 
     # Minimal values, in case of a small tournament
     if tournoi["round_winner_top8"] < 1: tournoi["round_winner_top8"] = 1
     if tournoi["round_looser_top8"] > -1: tournoi["round_looser_top8"] = -1
+
+    # Calculate start_bo5
+    tournoi["round_winner_bo5"] = tournoi["round_winner_top8"] + tournoi["start_bo5"]
+    tournoi["round_looser_bo5"] = tournoi["round_looser_top8"] - tournoi["start_bo5"]
+
+    # Avoid aberrant values
+    if tournoi["round_winner_bo5"] > max(rounds): tournoi["round_winner_bo5"] = max(rounds)
+    if tournoi["round_winner_bo5"] < 1: tournoi["round_winner_bo5"] = 1
+    if tournoi["round_looser_bo5"] < min(rounds): tournoi["round_looser_bo5"] = min(rounds)
+    if tournoi["round_looser_bo5"] > -1: tournoi["round_looser_bo5"] = -1
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
