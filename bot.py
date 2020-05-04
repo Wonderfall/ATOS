@@ -1026,7 +1026,7 @@ async def launch_matches(guild, bracket):
                                       f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{bot_prefix}stages`.\n"
                                       f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
                                       f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n\n"
-                                      f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages.\n")
+                                      f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages ({gamelist[tournoi['game']]['ban_instruction']}).\n")
 
             if tournoi["game"] == "Project+":
                 gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{bot_prefix}buffer [ping]`.\n"
