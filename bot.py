@@ -1351,7 +1351,13 @@ async def calculate_top8():
     if tournoi["round_looser_top8"] > -1: tournoi["round_looser_top8"] = -1
 
     # Calculate start_bo5
-    tournoi["round_winner_bo5"] = tournoi["round_winner_top8"] + tournoi["start_bo5"]
+    if tournoi["start_bo5"] > 0:
+        tournoi["round_winner_bo5"] = tournoi["round_winner_top8"] + tournoi["start_bo5"] - 1
+    elif tournoi["start_bo5"] in [0, -1]:
+        tournoi["round_winner_bo5"] = tournoi["round_winner_top8"] + tournoi["start_bo5"]
+    else:
+        tournoi["round_winner_bo5"] = tournoi["round_winner_top8"] + tournoi["start_bo5"] + 1
+
     tournoi["round_looser_bo5"] = tournoi["round_looser_top8"] - tournoi["start_bo5"]
 
     # Avoid aberrant values
