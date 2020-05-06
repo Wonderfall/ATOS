@@ -342,6 +342,9 @@ async def end_tournament(ctx):
         f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! "
         f"J'espère vous revoir bientôt.")
 
+    # Reset participants
+    participants = {}
+
     # Reset JSON storage
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
     with open(tournoi_path, 'w') as f: json.dump({}, f, indent=4)
