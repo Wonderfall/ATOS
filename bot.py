@@ -343,7 +343,7 @@ async def end_tournament(ctx):
         f"J'espère vous revoir bientôt.")
 
     # Reset participants
-    participants = {}
+    participants.clear()
 
     # Reset JSON storage
     with open(participants_path, 'w') as f: json.dump({}, f, indent=4)
