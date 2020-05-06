@@ -27,7 +27,7 @@ from utils.raw_texts import *
 log = logging.getLogger("atos")
 
 #### Infos
-version = "5.21"
+version = "5.22"
 author = "Wonderfall"
 name = "A.T.O.S."
 
