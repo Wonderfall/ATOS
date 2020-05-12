@@ -1712,6 +1712,8 @@ async def send_desync_help(ctx):
 
 @bot.event
 async def on_message_without_command(message: discord.Message):
+    if message.author.bot:
+        return
     if preferences["delete_non_command"] is False:
         return
     forbidden_channels = [inscriptions_channel_id, check_in_channel_id]
