@@ -287,9 +287,9 @@ async def start_tournament(ctx):
                        f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
                        f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
                        f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n"
-                       f":white_small_square: Si vous le souhaitez vraiment, vous pouvez toujours DQ du tournoi avec la commande `{bot_prefix}dq` à tout moment.\n"
-                       f":white_small_square: Il est possible d'abandonner son set en cours sans DQ du tournoi avec la commande `{bot_prefix}ff`.\n"
-                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.")
+                       f":white_small_square: Vous pouvez DQ du tournoi avec la commande `{bot_prefix}dq`, ou juste abandonner votre set en cours avec `{bot_prefix}ff`.\n"
+                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
+                       f":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les {tournoi['check_channel_presence']} minutes qui suivent sa création__.")
 
     if tournoi["game"] == "Project+":
         tournoi_annonce += f"\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `{bot_prefix}desync` pour résoudre la situation."
