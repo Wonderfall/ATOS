@@ -1361,7 +1361,10 @@ async def calculate_top8():
     else:
         tournoi["round_winner_bo5"] = tournoi["round_winner_top8"] + tournoi["start_bo5"] + 1
 
-    tournoi["round_looser_bo5"] = tournoi["round_looser_top8"] - tournoi["start_bo5"]
+    if tournoi["start_bo5"] > 1:
+        tournoi["round_looser_bo5"] = min(rounds) # top 3 is LF anyway
+    else:
+        tournoi["round_looser_bo5"] = tournoi["round_looser_top8"] - tournoi["start_bo5"]
 
     # Avoid aberrant values
     if tournoi["round_winner_bo5"] > max(rounds): tournoi["round_winner_bo5"] = max(rounds)
