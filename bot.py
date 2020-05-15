@@ -1710,18 +1710,6 @@ async def send_desync_help(ctx):
     await ctx.send(desync_text)
 
 
-@bot.event
-async def on_message_without_command(message: discord.Message):
-    if message.author.bot:
-        return
-    if preferences["delete_non_command"] is False:
-        return
-    forbidden_channels = [inscriptions_channel_id, check_in_channel_id]
-    channel = message.channel
-    if channel.id in forbidden_channels and channel.permissions_for(message.guild.me).manage_messages:
-        await message.delete()
-
-
 ### On command error : invoker has not enough permissions
 @bot.event
 async def on_command_error(ctx, error):
