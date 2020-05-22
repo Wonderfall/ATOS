@@ -1,0 +1,324 @@
+welcome1: "<@{0}> joins the battle!"
+
+welcome2: "Bienvenue à toi sur le serveur {0}, <@{1}>."
+
+welcome3: "Un <@{0}> sauvage apparaît !"
+
+welcome4: "Le serveur {0} accueille un nouveau membre :  <@{1}> !"
+
+welcomeText1: "Bienvenue sur le serveur **{0}** ! \n
+Je t'invite à consulter le channel <#{1}>, et également <#{2}> si tu souhaites t'inscrire à un tournoi.\n
+\n
+N'oublie pas de consulter les <#{3}> régulièrement, et de poser tes questions aux TOs sur <#{4}>.\n
+\n
+Je te conseille de t'attribuer un rôle dans <#{5}> par la même occasion.\n
+Enfin, amuse-toi bien ! *Tu peux obtenir une liste de commandes avec la commande `{6}help`.*"
+
+welcomeText2: "{0}\nJe t'invite à consulter le channel <#{1}>, et également <#{2}> si tu souhaites t'inscrire à un tournoi.\n
+\n
+N'oublie pas de consulter les <#{3}> régulièrement, et de poser tes questions aux TOs sur <#{4}>.\n
+\n
+Je te conseille de t'attribuer un rôle dans <#{5}> par la même occasion.\n
+Enfin, amuse-toi bien ! *Tu peux obtenir une liste de commandes avec la commande `{6}help`.*"
+
+helpText: "**{0} {1}** - *Made by {2} with* :heart:\n
+:cd: **Commandes membre :**\n
+:white_small_square: `{3}help` : affiche des commandes selon le statut du membre *(simple, joueur, admin, streamer)*.\n
+:white_small_square: `{3}bracket` : obtenir le lien du bracket en cours.\n
+:white_small_square: `{3}stream` : obtenir le ou les liens de stream du tournoi en cours.\n
+:white_small_square: `{3}desync` : obtenir une notice d'aide en cas de desync sur Dolphin Netplay.\n
+:white_small_square: `{3}buffer` : calcule le minimum buffer optimal pour Dolphin Netplay *(paramètre : ping)*.\n"
+
+challengerHelpText: ":no_entry_sign: **Commandes administrateur :**\n
+:white_small_square: `{0}setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.\n
+:white_small_square: `{0}rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.\n
+:white_small_square: `{0}add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.\n
+:white_small_square: `{0}start/end` : démarrer/finaliser le tournoi enregistré.\n
+:white_small_square: `{0}set` : changer une préférence *(paramètres : [paramètre] [on/off])*.\n
+:white_small_square: `{0}settings` : afficher les préférences modifiables avec `{0}set`.\n"
+
+adminHelpText: ":no_entry_sign: **Commandes administrateur :**\n
+:white_small_square: `{0}setup` : initialiser un tournoi *(paramètre : lien challonge valide)*.\n
+:white_small_square: `{0}rm` : désinscrire/retirer (DQ) quelqu'un du tournoi *(paramètre : @mention | liste)*.\n
+:white_small_square: `{0}add` : ajouter quelqu'un au tournoi *(paramètre : @mention | liste)*.\n
+:white_small_square: `{0}start/end` : démarrer/finaliser le tournoi enregistré.\n
+:white_small_square: `{0}set` : changer une préférence *(paramètres : [paramètre] [on/off])*.\n
+:white_small_square: `{0}settings` : afficher les préférences modifiables avec `{0}set`.\n"
+
+streamerHelpText: ":tv: **Commandes streamer :**\n
+:white_small_square: `{0}initstream` : initialiser son stream pour le tournoi actuel *(paramètre : lien Twitch)*.\n
+:white_small_square: `{0}stopstream` : arrêter son stream pour le tournoi actuel.\n
+:white_small_square: `{0}mystream` : obtenir les informations relatives au stream (IDs, on stream, queue).\n
+:white_small_square: `{0}setstream` : mettre en place les codes d'accès au stream *(paramètres jeu-dépendant)*.\n
+:white_small_square: `{0}addstream` : ajouter un set à la stream queue *(paramètre : n° | liste de n°)*.\n
+:white_small_square: `{0}rmstream` : retirer un set de la stream queue *(paramètre : n° | liste de n°)*.\n
+:white_small_square: `{0}swapstream` : interchanger deux sets de la stream queue *(paramètres : n°1 | n°2)*.\n"
+
+lagText: ":satellite: **Un lag a été constaté**, les <@&{0}> sont contactés.\n
+\n
+:one: En attendant, chaque joueur peut:\n
+:white_small_square: Vérifier qu'aucune autre connexion locale ne pompe la connexion.\n
+:white_small_square: S'assurer que la connexion au réseau est, si possible, câblée.\n
+:white_small_square: S'assurer qu'il/elle n'emploie pas un partage de connexion de réseau mobile (passable de DQ).\n
+\n
+:two: Si malgré ces vérifications la connexion n'est pas toujours pas satisfaisante, chaque joueur doit:\n
+:white_small_square: Préparer un test de connexion *(Switch pour Ultimate, Speedtest pour Project+)*.\n
+:white_small_square: Décrire sa méthode de connexion actuelle *(Wi-Fi, Ethernet direct, CPL -> ADSL, FFTH, 4G...)*.\n
+\n
+:three: Si nécessaire, un TO s'occupera de votre cas et proposera une arène avec le/les joueur(s) problématique(s).\n"
+
+desyncText: ":one: **Détecter une desync sur Project+ (Dolphin Netplay) :**\n
+:white_small_square: Une desync résulte dans des inputs transmis au mauvais moment (l'adversaire SD à répétition, etc.).\n
+:white_small_square: Si Dolphin affiche qu'une desync a été détectée, c'est probablement le cas.\n
+\n
+:two: **Résoudre une desync, les 2 joueurs : **\n
+:white_small_square: Peuvent avoir recours à une __personne de tierce partie__ pour déterminer le fautif.\n
+:white_small_square: S'assurent qu'ils ont bien installé **la dernière version en date** de Project+.\n
+:white_small_square: Vérifient depuis la fenêtre netplay que leur carte SD virtuelle a un hash MD5 égal à :\n
+```\n
+9b1bf61cf106b70ecbc81c1e70aed0f7\n
+```\n
+:white_small_square: Doivent vérifier que leur __ISO possède un hash MD5 inclus__ dans la liste compatible :\n
+```\n
+d18726e6dfdc8bdbdad540b561051087\n
+d8560b021835c9234c28be7ff9bcaaeb\n
+5052e2e15f22772ab6ce4fd078221e96\n
+52ce7160ced2505ad5e397477d0ea4fe\n
+9f677c78eacb7e9b8617ab358082be32\n
+1c4d6175e3cbb2614bd805d32aea7311\n
+```\n
+*ISO : clic droit sur \"Super Smash Bros Brawl\" > Onglet \"Info\" > Ligne \"MD5 Checksum\".\n
+SD : en haut à droite d'une fenêtre netplay, cliquer sur \"MD5 Check\" et choisir \"SD card\".*\n
+\n
+:three: **Si ces informations ne suffisent pas, contactez un TO.**\n"
+
+TournamentCreationWarning1: ":warning: Création du tournoi *{0}* annulée : **jeu introuvable dans la gamelist**."
+
+TournamentCreationWarning2: ":warning: Création du tournoi *{0}* annulée : **conflit des temps de check-in et d'inscriptions**."
+
+TournamentCreationWarning3: ":warning: Création du tournoi *{0}* annulée: **données de ranking introuvables**.\n
+*Désactivez le bulk mode avec `{1}set bulk_mode off` si vous ne souhaitez pas utiliser de ranking.*"
+
+TournamentStart: "{0} Le tournoi **{1}** est officiellement lancé ! Voici le bracket: {2}\n
+:white_small_square: Vous pouvez y accéder à tout moment avec la commande `{3}bracket`.\n
+:white_small_square: Vous pouvez consulter les liens de stream avec la commande `{3}stream`."
+
+scoreAnnounce: ":information_source: La prise en charge des scores pour le tournoi **{0}** est automatisée :\n
+:white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `{1}win`.\n
+:white_small_square: Le message du score doit contenir le **format suivant**: `{1}win 2-0, 3-2, 3-1, ...`.\n
+:white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n
+:white_small_square: Consultez le bracket afin de **vérifier** les informations: {2}\n
+:white_small_square: En cas de mauvais score: contactez un TO pour une correction manuelle.\n\n
+:satellite_orbital: Chaque score étant **transmis un par un**, il est probable que la communication prenne jusqu'à 30 secondes."
+
+queueAnnounce: ":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n
+:white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n
+:white_small_square: Tout set devant se jouer en BO5 est indiqué ici, et également dans votre channel.\n
+:white_small_square: La personne qui commence les bans est indiquée dans votre channel (en cas de besoin: `{0}flip`).\n\n
+:timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les {1} minutes qui suivent sa création__."
+
+tournamentAnnouncment: ":alarm_clock: <@&{0}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n
+:white_small_square: Vos sets sont annoncés dès que disponibles dans <#{1}>: **ne lancez rien sans consulter ce channel**.\n
+:white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{2}>.\n
+:white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{3}> avec la commande `{4}win`.\
+:white_small_square: Vous pouvez DQ du tournoi avec la commande `{4}dq`, ou juste abandonner votre set en cours avec `{4}ff`.\n
+:white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{4}lag` pour résoudre la situation.\n
+:timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les {5} minutes qui suivent sa création__."
+
+tournamentAnnouncmentConcat1: "\n{0} En cas de desync, utilisez la commande `{1}desync` pour résoudre la situation."
+
+tournamentAnnouncmentConcat2: "\n\n:fire: Le **top 8** commencera, d'après le bracket :\n
+:white_small_square: En **{0}**\n
+:white_small_square: En **{1}**\n\n"
+
+tournamentAnnouncmentBO3: ":three: L'intégralité du tournoi se déroulera en **BO3**."
+
+tournamentAnnouncmentBO5: ":five: L'intégralité du tournoi se déroulera en **BO5**."
+
+tournamentAnnouncmentStartBO5: ":five: Les **BO5** commenceront quant à eux :\n
+:white_small_square: En **{0}**\n
+:white_small_square: En **{1}**"
+
+tournamentAnnouncmentElse: ":five: Les **BO5** commenceront en **top 8**."
+
+tournamentAnnouncmentLast: "\n\n*L'équipe de TO et moi-même vous souhaitons un excellent tournoi !*"
+
+tournamentEnd: "{0} Le tournoi **{1}** est terminé, merci à toutes et à tous d'avoir participé ! J'espère vous revoir bientôt."
+
+inscriptionAnnouncement: "{0} **{1}** - {2} *{3}*\n
+:white_small_square: __Date__: {4} à {5}\n
+:white_small_square: __Check-in__: de {6} à {7}
+(fermeture des inscriptions à {8})\n
+:white_small_square: __Limite__: 0/{9} joueurs *(mise à jour en temps réel)*\n
+:white_small_square: __Bracket__: {10}\n
+:white_small_square: __Format__: singles, double élimination (ruleset: <#{11}>)\n\n
+Vous pouvez vous inscrire/désinscrire {12}.\n
+*Note: votre **pseudonyme {13}** au moment de l'inscription sera celui utilisé dans le bracket.*"
+
+subInscriptionAnnouncement1: "disponible peu de temps avant le début du tournoi"
+
+subInscriptionAnnouncement2: "en ajoutant/retirant la réaction ✅ à ce message"
+
+subInscriptionAnnouncement3: "avec les commandes `{0}in`/`{0}out`"
+
+subInscriptionAnnouncement4: "sur ce serveur"
+
+subInscriptionAnnouncement5: "Discord général"
+
+InscriptionAnnouncementEnd: "{0} Inscriptions pour le **{1}** ouvertes dans <#{2}> ! Consultez-y les messages épinglés. <@&{3}>\n
+:calendar_spiral: Ce tournoi aura lieu le **{4} à {5}**."
+
+signupMsg1: "Tu t'es inscrit(e) avec succès pour le tournoi **{0}**."
+
+signupMsg2: " Tu n'as **pas besoin de check-in** comme le tournoi commence bientôt !"
+
+signupMsgEnd: "Il n'y a malheureusement plus de place pour le tournoi **{0}**. Retente ta chance plus tard, par exemple à la fin du check-in pour remplacer les absents !"
+
+leaveTournament: "Tu es désinscrit(e) du tournoi **{0}**. À une prochaine fois peut-être !"
+
+checkInStart: ":information_source: Le check-in a commencé dans <#{0}>. Vous pouvez toujours vous inscrire ici jusqu'à **{1}**.\n\n
+*Toute personne s'inscrivant à partir de ce moment est **check-in automatiquement**.*"
+
+checkInStart2: "<@&{0}> Le check-in pour **{1}** a commencé !
+ Vous avez jusqu'à **{2}** pour signaler votre présence :\n
+:white_small_square: Utilisez `{3}in` pour confirmer votre inscription\n:white_small_square: Utilisez `{3}out` pour vous désinscrire\n\n
+*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*"
+
+rappelCheckin1: "**Attention !** Il te reste moins d'une dizaine de minutes pour check-in au tournoi **{0}**."
+
+rappelCheckin2: ":clock1: **Rappel de check-in !**"
+
+rappelCheckin3: "*Vous avez jusqu'à {0}, sinon vous serez désinscrit(s) automatiquement.*"
+
+endCheckin1: ":clock1: **Le check-in est terminé :**\n
+:white_small_square: Les personnes n'ayant pas check-in vont être retirées du tournoi.\n
+:white_small_square: Rappel : une inscription après le début du check-in ne néccessite pas de check-in."
+
+endCheckin2: ":information_source: **Les absents du check-in ont été retirés** : des places sont peut-être libérées pour des inscriptions de dernière minute.\n"
+
+endInscription: ":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation."
+
+checkin: "Tu as été check-in avec succès. Tu n'as plus qu'à patienter jusqu'au début du tournoi !"
+
+coinFlip1: "Tu commences à faire les bans."
+
+coinFlip2: "Ton adversaire commence à faire les bans."
+
+score1: "<@{0}> Dû à une coupure de Challonge, je n'ai pas pu récupérer les données du set. Merci de retenter dans quelques instants."
+score2: "<@{0}> Le set pour lequel tu as donné le score n'a **pas encore commencé** !"
+score3: "<@{0}> Tu n'as pas de set prévu pour le moment, il n'y a donc pas de score à rentrer."
+score4: "<@{0}> **Ton score ne possède pas le bon format** *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau."
+score5: "<@{0}> **Score incorrect**, vérifiez par exemple si le set doit se jouer en BO3 ou BO5."
+score6: "<@{0}> **Temps écoulé trop court** pour qu'un résultat soit déjà rentré pour le set."
+score7: "<@{0}> Dû à une coupure de Challonge, je n'ai pas pu envoyer ton score. Merci de retenter dans quelques instants."
+score8: ":bell: __Score rapporté__ : **{0}** gagne **{1}** !\n
+*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*\n
+*Note: ce channel sera automatiquement supprimé 5 minutes à partir de la dernière activité.*"
+
+launchTopic: "Channel temporaire pour un set."
+launchReason: "Lancement du set n°{0}"
+
+gamingChannel1: ":video_game: Je n'ai pas pu créer de channel, faites votre set en MP ou dans <#{0}>."
+gamingChannel2: "Tu joueras on stream pour ton prochain set contre **{0}** : je te communiquerai les codes d'accès quand ce sera ton tour."
+gamingChannelElse1: ":video_game: Allez faire votre set dans le channel <#{0}> !"
+gamingChannelElse2: ":arrow_forward: **{0}** : <@{1}> vs <@{2}> {3}\n
+:white_small_square: Les règles du set doivent suivre celles énoncées dans <#{4}>.\n
+:white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{5}stages`.\n
+:white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{5}lag` pour résoudre la situation.\n
+:white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{6}> avec la commande `{5}win`.\n\n
+:game_die: **{7}** est tiré au sort pour commencer le ban des stages *({8})*.\n"
+gamingChannelElse3: "{0} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{1}buffer [ping]`.\n"
+gamingChannelElse4: ":five: Vous devez jouer ce set en **BO5** *(best of five)*.\n"
+gamingChannelElse5: ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
+gamingChannelElse6: ":tv: **Vous jouerez on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
+sets1: ":arrow_forward: **{0}** ({1}) : <@{2}> vs <@{3}> {4}\n{5} {6}\n\n"
+
+channelActivity: ":timer: **DQ automatique de <@{0}> pour inactivité** : aucune manifestation à temps du joueur."
+channelActivity2: ":information_source: **DQ automatique** de <@{0}> pour inactivité, set n°{1}."
+channelActivity3: "Désolé, tu as été DQ automatiquement car tu n'as pas été actif sur ton channel de set dans les premières minutes qui ont suivi son lancement."
+
+postStream1: "<@{0}> Il n'y a pas de stream en cours (ou prévu) pour ce tournoi à l'heure actuelle."
+
+setupStream: "<@{0}> Paramètres invalides pour le jeu **{1}**."
+
+addStream: "<@{0}> Sets ajoutés à la stream queue : toutefois ils n'ont pas été vérifiés, le bracket n'ayant pas commencé."
+
+listStream1: ":information_source: Codes d'accès au stream **{0}** :\n{1}\n"
+listStream2: ":stop_button: Le tournoi n'est probablement pas en cours.\n"
+listStream3: ":stop_button: Aucun set on stream à l'heure actuelle.\n"
+listStream4: ":arrow_forward: **Set on stream actuel** *({0})* : **{1}** vs **{2}**\n"
+listStream5: ":play_pause: Liste des sets prévus pour passer on stream :\n{0}"
+listStream6: ":play_pause: Il n'y a aucun set prévu pour passer on stream."
+
+callStreamDM1: "C'est ton tour de passer on stream ! Voici les codes d'accès :\n{0}"
+callStream: "<@{0}> <@{1}>\n
+  :clapper: Vous pouvez passer on stream sur la chaîne **{2}** ! Voici les codes d'accès :\n
+  {3}"
+callStream2: ":arrow_forward: Envoi on stream du set n°{0} chez **{1}** :
+ **{2}** vs **{3}** !"
+
+repelMatchesAlert: ":timer: **Ce set n'a toujours pas reçu de score !** <@{0}> <@{1}>\n
+:white_small_square: Le gagnant du set est prié de le poster dans <#{2}> dès que possible.\n
+:white_small_square: Dans une dizaine de minutes, les TOs seront alertés qu'une décision doit être prise.\n
+:white_small_square: Si une personne est détectée comme inactive, elle sera **DQ automatiquement** du tournoi.\n"
+
+repelMathces: "<@&{0}> **DQ automatique des __2 joueurs__ pour inactivité : <@{1}> & <@{2}>**"
+repelMathcesLoser: "<@&{0}> **DQ automatique de <@{1}> pour inactivité.**"
+repelMathces2: "<@&{0}> **Une DQ automatique a été executée pour inactivité :**\n-<@{1}> passe au round suivant.\n-<@{2}> est DQ du tournoi."
+repelMathces3: "<@&{0}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise"
+repelMathces4: ":information_source: Le set du channel <#{0}> prend anormalement du temps, une intervention est peut-être nécessaire."
+
+getStageList: ":map: **Stages légaux pour {0} :**\n:white_small_square: __Starters__ :\n"
+getStageListMsg: ":white_small_square: __Counterpicks__ :\n"
+
+getRuleset: "<@{0}> Le ruleset est disponible ici : <#{1}>"
+
+lagText2: "\n{0} **Spécificités Project+ :**\n
+:white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n
+- Baisser la résolution interne dans les paramètres graphiques.\n
+- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n
+- Windows seulement: changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n
+:white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n
+- Le host peut augmenter le \"minimum buffer\" de 6 à 8: utilisez la commande `{1}buffer` en fournissant votre ping.\n
+- Suivre les étapes génériques contre le lag, citées ci-dessus.\n
+:white_small_square: Utilisez la commande `{1}desync` en cas de desync suspectée."
+
+lagText3: ":satellite: **Lag reporté** : les TOs sont invités à consulter le channel <#{0}>"
+
+calculateBuffer: "<@{0}> Minimum buffer (host) suggéré pour Dolphin Netplay : **{1}**.\n
+*Si du lag persiste, il y a un problème de performance: montez le buffer tant que nécessaire.*"
+
+resultsAnnouncement: "{0} Résultats du **{1}** : {2}"
+resultsAnnouncementEnding1: "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour..."
+resultsAnnouncementEnding2: "Merci à tous d'avoir participé, on se remet ça très bientôt ! Prenez soin de vous."
+resultsAnnouncementEnding3: "Félicitations à eux. N'oubliez pas que la clé est la persévérance ! Croyez toujours en vous."
+resultsAnnouncementEnding4: "Ce fut un plaisir en tant que bot d'aider à la gestion de ce tournoi et d'assister à vos merveileux sets."
+resultsAnnouncementPlacings: "{0} **__Résultats du tournoi {1}__**\n\n
+  :trophy: **1er**: **{2}**\n
+  :second_place: **2e**: {3}\n
+  :third_place: **3e**: {4}\n
+  :medal: **4e**: {5}\n
+  :reminder_ribbon: **5e**: {6}\n
+  :reminder_ribbon: **7e**: {7}\n\n
+  :bar_chart: {8} entrants\n
+  {9} {10}\n
+  :link: **Bracket :** {11}\n\n
+  {12}"
+
+rolePick1: "Le rôle **{0}** t'a été attribué avec succès : tu recevras des informations concernant les tournois *{1}* !"
+rolePick2: "Le rôle **{0}** t'a été attribué avec succès : tu seras contacté si un joueur cherche des combats sur *{1}* !"
+
+roleRemove1: "Le rôle **{0}** t'a été retiré avec succès : tu ne recevras plus les informations concernant les tournois *{1}*."
+roleRemove2: "Le rôle **{0}** t'a été retiré avec succès : tu ne seras plus contacté si un joueur cherche des combats sur *{1}*."
+
+preferences1: "<@{0}> **Paramètre inconnu :** `{1}`."
+preferences2: "<@{0}> **Valeur incorrecte :** `{1}`."
+preferences3: "<@{0}> **Paramètre changé :** `{1} = {2}`."
+
+settingsCheck: ":gear: __Liste des paramètres modifiables sans redémarrage__ :\n{0}\n
+Vous pouvez modifier chacun de ces paramètres avec la commande `{1}set [paramètre] [valeur]`.\n
+*Ces paramètres ne s'appliquent qu'au moment de la création d'un tournoi, et ne peuvent pas changer jusqu'à sa fin.*"
+
+commandError1: "<@{0}> Les paramètres de cette commande sont mal renseignés. Utilise `{1}help` pour en savoir plus."
+commandError2: "<@{0}> **Cooldown** : cette commande sera de nouveau disponible pour toi dans {1} secondes."
+commandError3: "<@{0}> Voulais-tu écrire autre chose ? Utilise `{1}help` pour avoir la liste des commandes."

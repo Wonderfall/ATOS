@@ -21,8 +21,9 @@ from utils.json_stream import participants, dump_participants
 # Import configuration (variables only)
 from utils.get_config import *
 
-# Import raw texts (variables only)
-from utils.raw_texts import *
+# import locale strings
+from loc import strings_import
+strings: dict = strings_import(language)
 
 log = logging.getLogger("atos")
 
@@ -66,18 +67,30 @@ async def on_member_join(member):
     if greet_new_members == False: return
 
     message = random.choice([
-        f"<@{member.id}> joins the battle!",
-        f"Bienvenue à toi sur le serveur {member.guild.name}, <@{member.id}>.",
-        f"Un <@{member.id}> sauvage apparaît !",
-        f"Le serveur {member.guild.name} accueille un nouveau membre :  <@{member.id}> !"
+        strings['welcome1'].format(member.id),
+        strings['welcome2'].format(member.guild.name, member.id),
+        strings['welcome3'].format(member.id),
+        strings['welcome4'].format(member.guild.name, member.id)
     ])
 
     try:
-        await member.send(f"Bienvenue sur le serveur **{member.guild.name}** ! {welcome_text}")
+        await member.send(strings['welcomeText1'].format(member.guild.name,
+                                                         deroulement_channel_id,
+                                                         inscriptions_channel_id,
+                                                         annonce_channel_id,
+                                                         faq_channel_id,
+                                                         roles_channel_id,
+                                                         bot_prefix))
     except discord.Forbidden:
-        await bot.get_channel(blabla_channel_id).send(f"{message} {welcome_text}")
+        await bot.get_channel(blabla_channel_id).send(strings['welcomeText2'].format(message,
+                                                                                     deroulement_channel_id,
+                                                                                     inscriptions_channel_id,
+                                                                                     annonce_channel_id,
+                                                                                     faq_channel_id,
+                                                                                     roles_channel_id,
+                                                                                     bot_prefix))
     else:
-        await bot.get_channel(blabla_channel_id).send(message) # Avoid sending welcome_text to the channel if possible
+        await bot.get_channel(blabla_channel_id).send(message)  # Avoid sending welcome_text to the channel if possible
 
 
 ### Récupérer informations du tournoi et initialiser tournoi.json
@@ -117,19 +130,19 @@ async def init_tournament(url_or_id):
 
     # Checks
     if tournoi['game'] not in gamelist:
-        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **jeu introuvable dans la gamelist**.")
+        await bot.get_channel(to_channel_id).send(strings['TournamentCreationWarning1'].format(tournoi['game']))
         return
 
     if not (datetime.datetime.now() < tournoi["début_check-in"] < tournoi["fin_check-in"] < tournoi["fin_inscription"] < tournoi["début_tournoi"]):
-        await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **conflit des temps de check-in et d'inscriptions**.")
+        await bot.get_channel(to_channel_id).send(strings['TournamentCreationWarning2'].format(tournoi['game']))
         return
 
-    if tournoi['bulk_mode'] == True:
+    if tournoi['bulk_mode']:
         try:
             await get_ranking_csv(tournoi)
         except (KeyError, ValueError):
-            await bot.get_channel(to_channel_id).send(f":warning: Création du tournoi *{tournoi['game']}* annulée : **données de ranking introuvables**.\n"
-                                                      f"*Désactivez le bulk mode avec `{bot_prefix}set bulk_mode off` si vous ne souhaitez pas utiliser de ranking.*")
+            await bot.get_channel(to_channel_id).send(strings['TournamentCreationWarning3'].format(tournoi['game'],
+                                                                                                   bot_prefix))
             return
 
     with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
@@ -202,7 +215,7 @@ async def auto_setup_tournament():
                 relative = dateutil.relativedelta.relativedelta(day = day) # It's a monthly
             except ValueError:
                 return # Neither?
- 
+
             next_date = (datetime.datetime.now().astimezone() + relative).replace(
                 hour = dateutil.parser.parse(tournaments[tournament]["start"]).hour,
                 minute = dateutil.parser.parse(tournaments[tournament]["start"]).minute,
@@ -260,56 +273,39 @@ async def start_tournament(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser) # Refresh to get top 8
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Le tournoi **{tournoi['name']}** est officiellement lancé ! Voici le bracket : {tournoi['url']}\n"
-                                                   f":white_small_square: Vous pouvez y accéder à tout moment avec la commande `{bot_prefix}bracket`.\n"
-                                                   f":white_small_square: Vous pouvez consulter les liens de stream avec la commande `{bot_prefix}stream`.")
+    await bot.get_channel(annonce_channel_id).send(strings['TournamentStart'].format(server_logo, tournoi['name'], tournoi['url'], bot_prefix))
 
-    score_annonce = (f":information_source: La prise en charge des scores pour le tournoi **{tournoi['name']}** est automatisée :\n"
-                     f":white_small_square: Seul **le gagnant du set** envoie le score de son set, précédé par la **commande** `{bot_prefix}win`.\n"
-                     f":white_small_square: Le message du score doit contenir le **format suivant** : `{bot_prefix}win 2-0, 3-2, 3-1, ...`.\n"
-                     f":white_small_square: Un mauvais score intentionnel, perturbant le déroulement du tournoi, est **passable de DQ et ban**.\n"
-                     f":white_small_square: Consultez le bracket afin de **vérifier** les informations : {tournoi['url']}\n"
-                     f":white_small_square: En cas de mauvais score : contactez un TO pour une correction manuelle.\n\n"
-                     f":satellite_orbital: Chaque score étant **transmis un par un**, il est probable que la communication prenne jusqu'à 30 secondes.")
-
-    await bot.get_channel(scores_channel_id).send(score_annonce)
+    await bot.get_channel(scores_channel_id).send(strings['scoreAnnounce'].format(tournoi['name'],
+                                                                                  bot_prefix,
+                                                                                  tournoi['url']))
     await bot.get_channel(scores_channel_id).set_permissions(challenger, read_messages=True, send_messages=True, add_reactions=False)
 
-    queue_annonce = (f":information_source: **Le lancement des sets est automatisé.** Veuillez suivre les consignes de ce channel, que ce soit par le bot ou les TOs.\n"
-                     f":white_small_square: Tout passage on stream sera notifié à l'avance, ici, dans votre channel (ou par DM).\n"
-                     f":white_small_square: Tout set devant se jouer en BO5 est indiqué ici, et également dans votre channel.\n"
-                     f":white_small_square: La personne qui commence les bans est indiquée dans votre channel (en cas de besoin : `{bot_prefix}flip`).\n\n"
-                     f":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les {tournoi['check_channel_presence']} minutes qui suivent sa création__.")
-
-    await bot.get_channel(queue_channel_id).send(queue_annonce)
-
-    tournoi_annonce = (f":alarm_clock: <@&{challenger_id}> On arrête le freeplay ! Le tournoi est sur le point de commencer. Veuillez lire les consignes :\n"
-                       f":white_small_square: Vos sets sont annoncés dès que disponibles dans <#{queue_channel_id}> : **ne lancez rien sans consulter ce channel**.\n"
-                       f":white_small_square: Le ruleset ainsi que les informations pour le bannissement des stages sont dispo dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
-                       f":white_small_square: Le gagnant d'un set doit rapporter le score **dès que possible** dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n"
-                       f":white_small_square: Vous pouvez DQ du tournoi avec la commande `{bot_prefix}dq`, ou juste abandonner votre set en cours avec `{bot_prefix}ff`.\n"
-                       f":white_small_square: En cas de lag qui rend votre set injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
-                       f":timer: Vous serez **DQ automatiquement** si vous n'avez pas été actif sur votre channel __dans les {tournoi['check_channel_presence']} minutes qui suivent sa création__.")
+    await bot.get_channel(queue_channel_id).send(strings['queueAnnounce'].format(bot_prefix,
+                                                                                 tournoi['check_channel_presence']))
+    tournoi_annonce = strings['tournamentAnnouncment'].format(challenger_id,
+                                                              queue_channel_id,
+                                                              gamelist[tournoi['game']]['ruleset'],
+                                                              scores_channel_id,
+                                                              bot_prefix,
+                                                              tournoi['check_channel_presence'])
 
     if tournoi["game"] == "Project+":
-        tournoi_annonce += f"\n{gamelist[tournoi['game']]['icon']} En cas de desync, utilisez la commande `{bot_prefix}desync` pour résoudre la situation."
+        tournoi_annonce += strings['tournamentAnnouncmentConcat1'].format(gamelist[tournoi['game']]['icon'], bot_prefix)
 
-    tournoi_annonce += (f"\n\n:fire: Le **top 8** commencera, d'après le bracket :\n"
-                        f":white_small_square: En **{nom_round(tournoi['round_winner_top8'])}**\n"
-                        f":white_small_square: En **{nom_round(tournoi['round_looser_top8'])}**\n\n")
-    
+    tournoi_annonce += strings['tournamentAnnouncmentConcat2'].format(nom_round(tournoi['round_winner_top8']),
+                                                                      nom_round(tournoi['round_looser_top8']))
+
     if tournoi["full_bo3"]:
-        tournoi_annonce += ":three: L'intégralité du tournoi se déroulera en **BO3**."
+        tournoi_annonce += strings['tournamentAnnouncmentBO3']
     elif tournoi["full_bo5"]:
-        tournoi_annonce += ":five: L'intégralité du tournoi se déroulera en **BO5**."
+        tournoi_annonce += strings['tournamentAnnouncmentBO5']
     elif tournoi["start_bo5"] != 0:
-        tournoi_annonce += (f":five: Les **BO5** commenceront quant à eux :\n"
-                            f":white_small_square: En **{nom_round(tournoi['round_winner_bo5'])}**\n"
-                            f":white_small_square: En **{nom_round(tournoi['round_looser_bo5'])}**")
+        tournoi_annonce += strings['tournamentAnnouncmentStartBO5'].format(nom_round(tournoi['round_winner_bo5']),
+                                                                           nom_round(tournoi['round_looser_bo5']))
     else:
-        tournoi_annonce += ":five: Les **BO5** commenceront en **top 8**."
+        tournoi_annonce += strings['tournamentAnnouncmentElse']
 
-    tournoi_annonce += "\n\n*L'équipe de TO et moi-même vous souhaitons un excellent tournoi !*"
+    tournoi_annonce += strings['tournamentAnnouncmentLast']
 
     await bot.get_channel(tournoi_channel_id).send(tournoi_annonce)
 
@@ -335,12 +331,10 @@ async def end_tournament(ctx):
         scheduler.remove_job('underway_tournament')
     except JobLookupError:
         pass
-    
+
     # Annoucements (including results)
     await annonce_resultats()
-    await bot.get_channel(annonce_channel_id).send(
-        f"{server_logo} Le tournoi **{tournoi['name']}** est terminé, merci à toutes et à tous d'avoir participé ! "
-        f"J'espère vous revoir bientôt.")
+    await bot.get_channel(annonce_channel_id).send(strings['tournamentEnd'].format(server_logo, tournoi['name']))
 
     # Reset participants
     participants.clear()
@@ -391,7 +385,7 @@ async def reload_tournament():
 
     # Prendre les inscriptions manquées
     if datetime.datetime.now() < tournoi["fin_inscription"]:
-        
+
         if tournoi["reaction_mode"]:
             annonce = await bot.get_channel(inscriptions_channel_id).fetch_message(tournoi["annonce_id"])
 
@@ -415,7 +409,7 @@ async def reload_tournament():
             for inscrit in participants:
                 if inscrit not in id_list:
                     await desinscrire(annonce.guild.get_member(inscrit))
-        
+
         else:
             async for message in bot.get_channel(inscriptions_channel_id).history(oldest_first=True):
                 if message.author == bot.user or message.reactions != []:
@@ -432,18 +426,21 @@ async def annonce_inscription():
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    annonce = (
-        f"{server_logo} **{tournoi['name']}** - {gamelist[tournoi['game']]['icon']} *{tournoi['game']}*\n"
-        f":white_small_square: __Date__ : {format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}\n"
-        f":white_small_square: __Check-in__ : de {format_time(tournoi['début_check-in'], format='short', locale=language)} à {format_time(tournoi['fin_check-in'], format='short', locale=language)} "
-        f"(fermeture des inscriptions à {format_time(tournoi['fin_inscription'], format='short', locale=language)})\n"
-        f":white_small_square: __Limite__ : 0/{str(tournoi['limite'])} joueurs *(mise à jour en temps réel)*\n"
-        f":white_small_square: __Bracket__ : {tournoi['url'] if not tournoi['bulk_mode'] else 'disponible peu de temps avant le début du tournoi'}\n"
-        f":white_small_square: __Format__ : singles, double élimination (ruleset : <#{gamelist[tournoi['game']]['ruleset']}>)\n\n"
-        f"Vous pouvez vous inscrire/désinscrire {'en ajoutant/retirant la réaction ✅ à ce message' if tournoi['reaction_mode'] else f'avec les commandes `{bot_prefix}in`/`{bot_prefix}out`'}.\n"
-        f"*Note : votre **pseudonyme {'sur ce serveur' if tournoi['use_guild_name'] else 'Discord général'}** au moment de l'inscription sera celui utilisé dans le bracket.*"
-    )
-    
+    annonce = strings['inscriptionAnnouncement'].format(server_logo,
+                                 tournoi['name'],
+                                 gamelist[tournoi['game']]['icon'],
+                                 tournoi['game'],
+                                 format_date(tournoi['début_tournoi'], format='full', locale=language),
+                                 format_time(tournoi['début_tournoi'], format='short', locale=language),
+                                 format_time(tournoi['début_check-in'], format='short', locale=language),
+                                 format_time(tournoi['fin_check-in'], format='short', locale=language),
+                                 format_time(tournoi['fin_inscription'], format='short', locale=language),
+                                 str(tournoi['limite']),
+                                 tournoi['url'] if not tournoi['bulk_mode'] else strings['subInscriptionAnnouncement1'],
+                                 gamelist[tournoi['game']]['ruleset'],
+                                 strings['subInscriptionAnnouncement2'] if tournoi['reaction_mode'] else strings['subInscriptionAnnouncement3'].format(bot_prefix),
+                                 strings['subInscriptionAnnouncement4'] if tournoi['use_guild_name'] else strings['subInscriptionAnnouncement5'])
+
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
     inscriptions_role = inscriptions_channel.guild.get_role(gamelist[tournoi['game']]['role']) if tournoi["restrict_to_role"] else inscriptions_channel.guild.default_role
 
@@ -461,11 +458,15 @@ async def annonce_inscription():
 
     if tournoi['reaction_mode']:
         await annonce_msg.add_reaction("✅")
-    
+
     await annonce_msg.pin()
 
-    await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! Consultez-y les messages épinglés. <@&{gamelist[tournoi['game']]['role']}>\n"
-                                                   f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
+    await bot.get_channel(annonce_channel_id).send(strings['InscriptionAnnouncementEnd'].format(server_logo,
+                                                                                                tournoi['name'],
+                                                                                                inscriptions_channel_id,
+                                                                                                gamelist[tournoi['game']]['role'],
+                                                                                                format_date(tournoi['début_tournoi'], format='full', locale=language),
+                                                                                                format_time(tournoi['début_tournoi'], format='short', locale=language)))
 
 
 ### Inscription
@@ -498,9 +499,9 @@ async def inscrire(member):
         await update_annonce()
 
         try:
-            msg = f"Tu t'es inscrit(e) avec succès pour le tournoi **{tournoi['name']}**."
+            msg = strings['signupMsg1'].format(tournoi['name'])
             if datetime.datetime.now() > tournoi["début_check-in"]:
-                msg += " Tu n'as **pas besoin de check-in** comme le tournoi commence bientôt !"
+                msg += strings['signupMsg2']
             await member.send(msg)
         except discord.Forbidden:
             pass
@@ -508,8 +509,7 @@ async def inscrire(member):
     elif tournoi["reaction_mode"] and len(participants) >= tournoi['limite']:
 
         try:
-            await member.send(f"Il n'y a malheureusement plus de place pour le tournoi **{tournoi['name']}**. "
-                              f"Retente ta chance plus tard, par exemple à la fin du check-in pour remplacer les absents !")
+            await member.send(strings['signupMsgEnd'].format(tournoi['name']))
         except discord.Forbidden:
             pass
 
@@ -549,7 +549,7 @@ async def desinscrire(member):
             await update_annonce()
 
             try:
-                await member.send(f"Tu es désinscrit(e) du tournoi **{tournoi['name']}**. À une prochaine fois peut-être !")
+                await member.send(strings['leaveTournament'].format(tournoi['name']))
             except discord.Forbidden:
                 pass
 
@@ -574,14 +574,15 @@ async def start_check_in():
 
     scheduler.add_job(rappel_check_in, 'interval', id='rappel_check_in', minutes=10, replace_existing=True)
 
-    await bot.get_channel(inscriptions_channel_id).send(f":information_source: Le check-in a commencé dans <#{check_in_channel_id}>. "
-                                                        f"Vous pouvez toujours vous inscrire ici jusqu'à **{format_time(tournoi['fin_inscription'], format='short', locale=language)}**.\n\n"
-                                                        f"*Toute personne s'inscrivant à partir de ce moment est **check-in automatiquement**.*")
+    await bot.get_channel(inscriptions_channel_id).send(strings['checkInStart'].format(check_in_channel_id,
+                                                                                       format_time(tournoi['fin_inscription'], format='short', locale=language)))
 
-    await bot.get_channel(check_in_channel_id).send(f"<@&{challenger_id}> Le check-in pour **{tournoi['name']}** a commencé ! "
-                                                    f"Vous avez jusqu'à **{format_time(tournoi['fin_check-in'], format='short', locale=language)}** pour signaler votre présence :\n"
-                                                    f":white_small_square: Utilisez `{bot_prefix}in` pour confirmer votre inscription\n:white_small_square: Utilisez `{bot_prefix}out` pour vous désinscrire\n\n"
-                                                    f"*Si vous n'avez pas check-in à temps, vous serez désinscrit automatiquement du tournoi.*")
+    await bot.get_channel(check_in_channel_id).send(strings['checkInStart2'].format(challenger_id,
+                                                                                    tournoi['name'],
+                                                                                    format_time(tournoi['fin_check-in'],
+                                                                                                format='short',
+                                                                                                locale=language),
+                                                                                    bot_prefix))
 
     await bot.get_channel(check_in_channel_id).set_permissions(challenger, read_messages=True, send_messages=True, add_reactions=False)
 
@@ -602,13 +603,13 @@ async def rappel_check_in():
 
             if tournoi["fin_check-in"] - datetime.datetime.now() < datetime.timedelta(minutes=10):
                 try:
-                    await guild.get_member(inscrit).send(f"**Attention !** Il te reste moins d'une dizaine de minutes pour check-in au tournoi **{tournoi['name']}**.")
+                    await guild.get_member(inscrit).send(strings['rappelCheckin1'].format(tournoi['name']))
                 except discord.Forbidden:
                     pass
 
     if rappel_msg == "": return
 
-    await bot.get_channel(check_in_channel_id).send(":clock1: **Rappel de check-in !**")
+    await bot.get_channel(check_in_channel_id).send(strings['rappelCheckin2'])
 
     if len(rappel_msg) < 2000:
         await bot.get_channel(check_in_channel_id).send(rappel_msg)
@@ -618,7 +619,8 @@ async def rappel_check_in():
             await bot.get_channel(check_in_channel_id).send('\n'.join(rappel_msg[:50]))
             del rappel_msg[:50] # and send by groups of 50 people
 
-    await bot.get_channel(check_in_channel_id).send(f"*Vous avez jusqu'à {format_time(tournoi['fin_check-in'], format='short', locale=language)}, sinon vous serez désinscrit(s) automatiquement.*")
+    await bot.get_channel(check_in_channel_id).send(strings['rappelCheckin3'].format(format_time(
+        tournoi['fin_check-in'], format='short', locale=language)))
 
 
 ### Fin du check-in
@@ -627,9 +629,7 @@ async def end_check_in():
     guild = bot.get_guild(id=guild_id)
 
     await bot.get_channel(check_in_channel_id).set_permissions(guild.get_role(challenger_id), read_messages=True, send_messages=False, add_reactions=False)
-    await bot.get_channel(check_in_channel_id).send(":clock1: **Le check-in est terminé :**\n"
-                                                    ":white_small_square: Les personnes n'ayant pas check-in vont être retirées du tournoi.\n"
-                                                    ":white_small_square: Rappel : une inscription après le début du check-in ne néccessite pas de check-in.")
+    await bot.get_channel(check_in_channel_id).send(strings['endCheckin1'])
 
     try:
         scheduler.remove_job('rappel_check_in')
@@ -640,8 +640,7 @@ async def end_check_in():
         if participants[inscrit]["checked_in"] == False:
             await desinscrire(guild.get_member(inscrit))
 
-    await bot.get_channel(inscriptions_channel_id).send(":information_source: **Les absents du check-in ont été retirés** : "
-                                                        "des places sont peut-être libérées pour des inscriptions de dernière minute.\n")
+    await bot.get_channel(inscriptions_channel_id).send(strings['endCheckin2'])
 
 
 ### Fin des inscriptions
@@ -657,7 +656,7 @@ async def end_inscription():
         inscriptions_role = guild.get_role(gamelist[tournoi['game']]['role']) if tournoi["restrict_to_role"] else guild.default_role
         await bot.get_channel(inscriptions_channel_id).set_permissions(inscriptions_role, read_messages=True, send_messages=False, add_reactions=False)
 
-    await bot.get_channel(inscriptions_channel_id).send(":clock1: **Les inscriptions sont fermées :** le bracket est désormais en cours de finalisation.")
+    await bot.get_channel(inscriptions_channel_id).send(strings['endInscription'])
 
     if tournoi["bulk_mode"]:
         await seed_participants(participants)
@@ -673,7 +672,7 @@ async def end_inscription():
 async def check_in(member):
     participants[member.id]["checked_in"] = True
     try:
-        await member.send("Tu as été check-in avec succès. Tu n'as plus qu'à patienter jusqu'au début du tournoi !")
+        await member.send(strings['checkin'])
     except discord.Forbidden:
         pass
 
@@ -750,7 +749,7 @@ async def post_bracket(ctx):
 ### Pile/face basique
 @bot.command(name='flip', aliases=['flipcoin', 'coinflip', 'coin'])
 async def flipcoin(ctx):
-    await ctx.send(f"<@{ctx.author.id}> {random.choice(['Tu commences à faire les bans.', 'Ton adversaire commence à faire les bans.'])}")
+    await ctx.send(f"<@{ctx.author.id}> {random.choice([strings['coinFlip1'], strings['coinFlip2']])}")
 
 
 ### Ajout manuel
@@ -818,24 +817,24 @@ async def score_match(ctx, arg):
         )
     except ChallongeException:
         await ctx.message.add_reaction("🕐")
-        await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu récupérer les données du set. Merci de retenter dans quelques instants.")
+        await ctx.send(strings['score1'].format(ctx.author.id))
         return
 
     try:
         if match[0]["underway_at"] == None:
             await ctx.message.add_reaction("⚠️")
-            await ctx.send(f"<@{ctx.author.id}> Le set pour lequel tu as donné le score n'a **pas encore commencé** !")
+            await ctx.send(strings['score2'].format(ctx.author.id))
             return
     except IndexError:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> Tu n'as pas de set prévu pour le moment, il n'y a donc pas de score à rentrer.")
+        await ctx.send(strings['score3'].format(ctx.author.id))
         return
 
     try:
         score = re.search(r'([0-9]+) *\- *([0-9]+)', arg).group().replace(" ", "")
     except AttributeError:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Ton score ne possède pas le bon format** *(3-0, 2-1, 3-2...)*, merci de le rentrer à nouveau.")
+        await ctx.send(strings['score4'].format(ctx.author.id))
         return
 
     if score[0] < score[2]: score = score[::-1] # Le premier chiffre doit être celui du gagnant
@@ -849,12 +848,12 @@ async def score_match(ctx, arg):
 
     if int(score[0]) != aimed_score or int(score[2]) not in looser_score:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Score incorrect**, vérifiez par exemple si le set doit se jouer en BO3 ou BO5.")
+        await ctx.send(strings['score5'].format(ctx.author.id))
         return
 
     if datetime.datetime.now() - debut_set < datetime.timedelta(minutes = temps_min):
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Temps écoulé trop court** pour qu'un résultat soit déjà rentré pour le set.")
+        await ctx.send(strings['score6'].format(ctx.author.id))
         return
 
     for joueur in participants:
@@ -879,15 +878,13 @@ async def score_match(ctx, arg):
 
     except ChallongeException:
         await ctx.message.add_reaction("🕐")
-        await ctx.send(f"<@{ctx.author.id}> Dû à une coupure de Challonge, je n'ai pas pu envoyer ton score. Merci de retenter dans quelques instants.")
+        await ctx.send(strings['score7'].format(ctx.author.id))
 
     else:
         gaming_channel = discord.utils.get(ctx.guild.text_channels, name=str(match[0]["suggested_play_order"]))
 
         if gaming_channel != None:
-            await gaming_channel.send(f":bell: __Score rapporté__ : **{participants[ctx.author.id]['display_name']}** gagne **{og_score}** !\n"
-                                      f"*En cas d'erreur, appelez un TO ! Un mauvais score intentionnel est passable de DQ et ban du tournoi.*\n"
-                                      f"*Note : ce channel sera automatiquement supprimé 5 minutes à partir de la dernière activité.*")
+            await gaming_channel.send(strings['score8'].format(participants[ctx.author.id]['display_name'], og_score))
 
 
 ### Clean channels
@@ -1008,36 +1005,40 @@ async def launch_matches(guild, bracket):
                     player2: discord.PermissionOverwrite(read_messages=True)
                 },
                 category = await get_available_category(match['round']),
-                topic = "Channel temporaire pour un set.",
-                reason = f"Lancement du set n°{match['suggested_play_order']}"
+                topic=strings['launchTopic'],
+                reason=strings['launchReason'].format(match['suggested_play_order'])
             )
 
         except discord.HTTPException:
-            gaming_channel_txt = f":video_game: Je n'ai pas pu créer de channel, faites votre set en MP ou dans <#{tournoi_channel_id}>."
+            gaming_channel_txt = strings['gamingChannel1'].format(tournoi_channel_id)
 
             if is_queued_for_stream(match["suggested_play_order"]):
-                await player1.send(f"Tu joueras on stream pour ton prochain set contre **{player2.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
-                await player2.send(f"Tu joueras on stream pour ton prochain set contre **{player1.display_name}** : je te communiquerai les codes d'accès quand ce sera ton tour.")
+                await player1.send(strings['gamingChannel2'].format(player2.display_name))
+                await player2.send(strings['gamingChannel2'].format(player1.display_name))
 
         else:
-            gaming_channel_txt = f":video_game: Allez faire votre set dans le channel <#{gaming_channel.id}> !"
+            gaming_channel_txt = strings['gamingChannelElse1'].format(gaming_channel.id)
 
             with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-            gaming_channel_annonce = (f":arrow_forward: **{nom_round(match['round'])}** : <@{player1.id}> vs <@{player2.id}> {top_8}\n"
-                                      f":white_small_square: Les règles du set doivent suivre celles énoncées dans <#{gamelist[tournoi['game']]['ruleset']}>.\n"
-                                      f":white_small_square: La liste des stages légaux à l'heure actuelle est disponible via la commande `{bot_prefix}stages`.\n"
-                                      f":white_small_square: En cas de lag qui rend la partie injouable, utilisez la commande `{bot_prefix}lag` pour résoudre la situation.\n"
-                                      f":white_small_square: **Dès que le set est terminé**, le gagnant envoie le score dans <#{scores_channel_id}> avec la commande `{bot_prefix}win`.\n\n"
-                                      f":game_die: **{random.choice([player1.display_name, player2.display_name])}** est tiré au sort pour commencer le ban des stages *({gamelist[tournoi['game']]['ban_instruction']})*.\n")
+            gaming_channel_annonce = (strings['gamingChannelElse2'].format(nom_round(match['round']),
+                                                                           player1.id,
+                                                                           player2.id,
+                                                                           top_8,
+                                                                           gamelist[tournoi['game']]['ruleset'],
+                                                                           bot_prefix,
+                                                                           scores_channel_id,
+                                                                           random.choice([player1.display_name, player2.display_name]),
+                                                                           gamelist[tournoi['game']]['ban_instruction']))
 
             if tournoi["game"] == "Project+":
-                gaming_channel_annonce += f"{gamelist[tournoi['game']]['icon']} **Minimum buffer suggéré** : le host peut le faire calculer avec la commande `{bot_prefix}buffer [ping]`.\n"
+                gaming_channel_annonce += strings['gamingChannelElse3'].format(gamelist[tournoi['game']]['icon'],
+                                                                               bot_prefix)
 
             if is_bo5(match["round"]):
-                gaming_channel_annonce += ":five: Vous devez jouer ce set en **BO5** *(best of five)*.\n"
+                gaming_channel_annonce += strings['gamingChannelElse4']
             else:
-                gaming_channel_annonce += ":three: Vous devez jouer ce set en **BO3** *(best of three)*.\n"
+                gaming_channel_annonce += strings['gamingChannelElse5']
 
             if not is_top8(match["round"]):
                 scheduler.add_job(
@@ -1048,14 +1049,15 @@ async def launch_matches(guild, bracket):
                 )
 
             if is_queued_for_stream(match["suggested_play_order"]):
-                gaming_channel_annonce += ":tv: **Vous jouerez on stream**. Dès que ce sera votre tour, je vous communiquerai les codes d'accès."
+                gaming_channel_annonce += strings['gamingChannelElse6']
 
             await gaming_channel.send(gaming_channel_annonce)
 
         on_stream = "(**on stream**) :tv:" if is_queued_for_stream(match["suggested_play_order"]) else ""
         bo_type = 'BO5' if is_bo5(match['round']) else 'BO3'
 
-        sets += f":arrow_forward: **{nom_round(match['round'])}** ({bo_type}) : <@{player1.id}> vs <@{player2.id}> {on_stream}\n{gaming_channel_txt} {top_8}\n\n"
+        sets += strings['sets1'].format(nom_round(match['round']), bo_type, player1.id, player2.id, on_stream,
+                                        gaming_channel_txt, top_8)
 
     if sets != "":
         if len(sets) < 2000:
@@ -1082,16 +1084,16 @@ async def check_channel_activity(channel, player1, player2):
         return
 
     if player1_is_active == False:
-        await channel.send(f":timer: **DQ automatique de <@{player1.id}> pour inactivité** : aucune manifestation à temps du joueur.")
+        await channel.send(strings['channelActivity'].format(player1.id))
         await desinscrire(player1)
-        await bot.get_channel(to_channel_id).send(f":information_source: **DQ automatique** de <@{player1.id}> pour inactivité, set n°{channel.name}.")
-        await player1.send("Désolé, tu as été DQ automatiquement car tu n'as pas été actif sur ton channel de set dans les premières minutes qui ont suivi son lancement.")
+        await bot.get_channel(to_channel_id).send(strings['channelActivity2'].format(player1.id, channel.name))
+        await player1.send(strings['channelActivity3'])
 
     if player2_is_active == False:
-        await channel.send(f":timer: **DQ automatique de <@{player2.id}> pour inactivité** : aucune manifestation à temps du joueur.")
+        await channel.send(strings['channelActivity'].format(player2.id))
         await desinscrire(player2)
-        await bot.get_channel(to_channel_id).send(f":information_source: **DQ automatique** de <@{player2.id}> pour inactivité, set n°{channel.name}.")
-        await player2.send("Désolé, tu as été DQ automatiquement car tu n'as pas été actif sur ton channel de set dans les premières minutes qui ont suivi son lancement.")
+        await bot.get_channel(to_channel_id).send(strings['channelActivity2'].format(player2.id, channel.name))
+        await player2.send(strings['channelActivity3'])
 
 
 @bot.command(name='initstream', aliases=['is'])
@@ -1130,8 +1132,8 @@ async def post_stream(ctx):
     with open(stream_path, 'r+') as f: stream = json.load(f, object_pairs_hook=int_keys)
 
     if len(stream) == 0:
-        await ctx.send(f"<@{ctx.author.id}> Il n'y a pas de stream en cours (ou prévu) pour ce tournoi à l'heure actuelle.")
-    
+        await ctx.send(strings['postStream1'].format(ctx.author.id))
+
     elif len(stream) == 1:
         await ctx.send(f"<@{ctx.author.id}> https://www.twitch.tv/{stream[next(iter(stream))]['channel']}")
 
@@ -1158,7 +1160,7 @@ async def setup_stream(ctx, *args):
 
     else:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> Paramètres invalides pour le jeu **{tournoi['game']}**.")
+        await ctx.send(strings['setupStream'].format(ctx.author.id, tournoi['game']))
         return
 
     with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
@@ -1181,7 +1183,7 @@ async def add_stream(ctx, *args: int):
         for arg in args: stream[ctx.author.id]["queue"].append(arg)
         with open(stream_path, 'w') as f: json.dump(stream, f, indent=4)
         await ctx.message.add_reaction("✅")
-        await ctx.send(f"<@{ctx.author.id}> Sets ajoutés à la stream queue : toutefois ils n'ont pas été vérifiés, le bracket n'ayant pas commencé.")
+        await ctx.send(strings['addStream'].format(ctx.author.id))
         return
 
     # Otherwise we should check if the sets are open
@@ -1253,20 +1255,20 @@ async def list_stream(ctx):
         await ctx.message.add_reaction("🕐")
         return
 
-    msg = f":information_source: Codes d'accès au stream **{stream[ctx.author.id]['channel']}** :\n{get_access_stream(stream[ctx.author.id]['access'])}\n"
+    msg = strings['listStream1'].format(stream[ctx.author.id]['channel'], get_access_stream(stream[ctx.author.id]['access']))
 
     try:
         match = bracket[[x["suggested_play_order"] for x in bracket].index(stream[ctx.author.id]['on_stream'])]
     except KeyError: # bracket is empty
-        msg += ":stop_button: Le tournoi n'est probablement pas en cours.\n"
+        msg += strings['listStream2']
     except ValueError: # on stream not found
-        msg += ":stop_button: Aucun set on stream à l'heure actuelle.\n"
+        msg += strings['listStream3']
     else:
         for joueur in participants:
             if participants[joueur]["challonge"] == match["player1_id"]: player1 = participants[joueur]['display_name']
             if participants[joueur]["challonge"] == match["player2_id"]: player2 = participants[joueur]['display_name']
 
-        msg += f":arrow_forward: **Set on stream actuel** *({match['suggested_play_order']})* : **{player1}** vs **{player2}**\n"
+        msg += strings['listStream4'].format(match['suggested_play_order'], player1, player2)
 
     list_stream = ""
 
@@ -1285,9 +1287,9 @@ async def list_stream(ctx):
                 break
 
     if list_stream != "":
-        msg += f":play_pause: Liste des sets prévus pour passer on stream :\n{list_stream}"
+        msg += strings['listStream5'].format(list_stream)
     else:
-        msg += ":play_pause: Il n'y a aucun set prévu pour passer on stream."
+        msg += strings['listStream6']
 
     await ctx.send(msg)
 
@@ -1318,16 +1320,19 @@ async def call_stream(guild, bracket):
         gaming_channel = discord.utils.get(guild.text_channels, name=str(match["suggested_play_order"]))
 
         if gaming_channel == None:
-            dm_msg = f"C'est ton tour de passer on stream ! Voici les codes d'accès :\n{get_access_stream(stream[streamer]['access'])}"
+            dm_msg = strings['callStreamDM1'].format(get_access_stream(stream[streamer]['access']))
             await player1.send(dm_msg)
             await player2.send(dm_msg)
         else:
-            await gaming_channel.send(f"<@{player1.id}> <@{player2.id}>\n" # ping them
-                                      f":clapper: Vous pouvez passer on stream sur la chaîne **{stream[streamer]['channel']}** ! "
-                                      f"Voici les codes d'accès :\n{get_access_stream(stream[streamer]['access'])}")
+            await gaming_channel.send(strings['callStream'].format(player1.id,
+                                                                   player2.id,
+                                                                   stream[streamer]['channel'],
+                                                                   get_access_stream(stream[streamer]['access'])))
 
-        await bot.get_channel(stream_channel_id).send(f":arrow_forward: Envoi on stream du set n°{match['suggested_play_order']} chez **{stream[streamer]['channel']}** : "
-                                                      f"**{participants[player1.id]['display_name']}** vs **{participants[player2.id]['display_name']}** !")
+        await bot.get_channel(stream_channel_id).send(strings['callStream2'].format(match['suggested_play_order'],
+                                                                                    stream[streamer]['channel'],
+                                                                                    participants[player1.id]['display_name'],
+                                                                                    participants[player2.id]['display_name']))
 
         stream[streamer]["on_stream"] = match["suggested_play_order"]
 
@@ -1409,12 +1414,9 @@ async def rappel_matches(guild, bracket):
                         tournoi["warned"].append(match["suggested_play_order"])
                         with open(tournoi_path, 'w') as f: json.dump(tournoi, f, indent=4, default=dateconverter)
 
-                        alerte = (f":timer: **Ce set n'a toujours pas reçu de score !** <@{player1.id}> <@{player2.id}>\n"
-                                  f":white_small_square: Le gagnant du set est prié de le poster dans <#{scores_channel_id}> dès que possible.\n"
-                                  f":white_small_square: Dans une dizaine de minutes, les TOs seront alertés qu'une décision doit être prise.\n"
-                                  f":white_small_square: Si une personne est détectée comme inactive, elle sera **DQ automatiquement** du tournoi.\n")
-
-                        await gaming_channel.send(alerte)
+                        await gaming_channel.send(strings['repelMatchesAlert'].format(player1.id,
+                                                                                      player2.id,
+                                                                                      scores_channel_id))
 
                     # DQ pour inactivité (exceptionnel...) -> fixé à 10 minutes après l'avertissement
                     elif (match["suggested_play_order"] not in tournoi["timeout"]) and (datetime.datetime.now() - debut_set > datetime.timedelta(minutes = seuil + 10)):
@@ -1437,8 +1439,8 @@ async def rappel_matches(guild, bracket):
 
                         try:
                             winner
-                        except NameError: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux 
-                            await gaming_channel.send(f"<@&{to_id}> **DQ automatique des __2 joueurs__ pour inactivité : <@{player1.id}> & <@{player2.id}>**")
+                        except NameError: # S'il n'y a jamais eu de résultat, aucun joueur n'a donc été actif : DQ des deux
+                            await gaming_channel.send(strings['repelMathces'].format(to_id, player1.id, player2.id))
                             await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[player1.id]['challonge'])
                             await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[player2.id]['challonge'])
                             continue
@@ -1447,18 +1449,18 @@ async def rappel_matches(guild, bracket):
                             looser
                         except NameError: # S'il n'y a pas eu de résultat pour un second joueur différent : DQ de l'inactif
                             looser = player2 if winner.id == player1.id else player1
-                            await gaming_channel.send(f"<@&{to_id}> **DQ automatique de <@{looser.id}> pour inactivité.**")
+                            await gaming_channel.send(strings['repelMathcesLoser'].format(to_id, looser.id))
                             await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
                             continue
 
                         if winner_last_activity - looser_last_activity > datetime.timedelta(minutes = 10): # Si différence d'inactivité de plus de 10 minutes
-                            await gaming_channel.send(f"<@&{to_id}> **Une DQ automatique a été executée pour inactivité :**\n-<@{winner.id}> passe au round suivant.\n-<@{looser.id}> est DQ du tournoi.")
+                            await gaming_channel.send(strings['repelMathces2'].format(to_id, winner.id, looser.id))
                             await async_http_retry(achallonge.participants.destroy, tournoi["id"], participants[looser.id]['challonge'])
 
                         else: # Si pas de différence notable, demander une décision manuelle
-                            await gaming_channel.send(f"<@&{to_id}> **Durée anormalement longue détectée** pour ce set, une décision d'un TO doit être prise")
+                            await gaming_channel.send(strings['repelMathces3'].format(to_id))
 
-                        await bot.get_channel(to_channel_id).send(f":information_source: Le set du channel <#{gaming_channel.id}> prend anormalement du temps, une intervention est peut-être nécessaire.")
+                        await bot.get_channel(to_channel_id).send(strings['repelMathces4'].format(gaming_channel.id))
 
 
 ### Obtenir stagelist
@@ -1468,11 +1470,11 @@ async def get_stagelist(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    msg = f":map: **Stages légaux pour {tournoi['game']} :**\n:white_small_square: __Starters__ :\n"
+    msg = strings['getStageList'].format(tournoi['game'])
     for stage in gamelist[tournoi['game']]['starters']: msg += f"- {stage}\n"
 
     if 'counterpicks' in gamelist[tournoi['game']]:
-        msg += ":white_small_square: __Counterpicks__ :\n"
+        msg += strings['getStageListMsg']
         for stage in gamelist[tournoi['game']]['counterpicks']: msg += f"- {stage}\n"
 
     await ctx.send(msg)
@@ -1484,7 +1486,7 @@ async def get_stagelist(ctx):
 async def get_ruleset(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
-    await ctx.send(f"<@{ctx.author.id}> Le ruleset est disponible ici : <#{gamelist[tournoi['game']]['ruleset']}>")
+    await ctx.send(strings['getRuleset'].format(ctx.author.id, gamelist[tournoi['game']]['ruleset']))
 
 
 ### Lag
@@ -1496,20 +1498,12 @@ async def send_lag_text(ctx):
     with open(tournoi_path, 'r+') as f: tournoi = json.load(f, object_hook=dateparser)
     with open(gamelist_path, 'r+') as f: gamelist = yaml.full_load(f)
 
-    msg = lag_text
+    msg = strings['lagText'].format(to_id)
 
     if tournoi['game'] == 'Project+':
-        msg += (f"\n{gamelist[tournoi['game']]['icon']} **Spécificités Project+ :**\n"
-                f":white_small_square: Vérifier que le PC fait tourner le jeu de __manière fluide (60 FPS constants)__, sinon :\n"
-                f"- Baisser la résolution interne dans les paramètres graphiques.\n"
-                f"- Désactiver les textures HD, l'anti-aliasing, s'ils ont été activés.\n"
-                f"- Windows seulement : changer le backend pour *Direct3D9* (le + fluide) ou *Direct3D11* (+ précis que D9)\n"
-                f":white_small_square: Vérifier que la connexion est __stable et suffisamment rapide__ :\n"
-                f"- Le host peut augmenter le \"minimum buffer\" de 6 à 8 : utilisez la commande `{bot_prefix}buffer` en fournissant votre ping.\n"
-                f"- Suivre les étapes génériques contre le lag, citées ci-dessus.\n"
-                f":white_small_square: Utilisez la commande `{bot_prefix}desync` en cas de desync suspectée.")
+        msg += strings['lagText2'].format(gamelist[tournoi['game']]['icon'], bot_prefix)
 
-    await bot.get_channel(to_channel_id).send(f":satellite: **Lag reporté** : les TOs sont invités à consulter le channel <#{ctx.channel.id}>")
+    await bot.get_channel(to_channel_id).send(strings['lagText3'].format(ctx.channel.id))
     await ctx.send(msg)
 
 
@@ -1520,8 +1514,7 @@ async def calculate_buffer(ctx, arg: int):
     theoretical_buffer = arg // 8 + (arg % 8 > 0)
     suggested_buffer = theoretical_buffer if theoretical_buffer >= 4 else 4
 
-    await ctx.send(f"<@{ctx.author.id}> Minimum buffer (host) suggéré pour Dolphin Netplay : **{suggested_buffer}**.\n"
-                   f"*Si du lag persiste, il y a un problème de performance : montez le buffer tant que nécessaire.*")
+    await ctx.send(strings['calculateBuffer'].format(ctx.author.id, suggested_buffer))
 
 
 ### Annoncer les résultats
@@ -1533,7 +1526,9 @@ async def annonce_resultats():
     participants, resultats = await async_http_retry(achallonge.participants.index, tournoi["id"]), []
 
     if len(participants) < 8:
-        await bot.get_channel(resultats_channel_id).send(f"{server_logo} Résultats du **{tournoi['name']}** : {tournoi['url']}")
+        await bot.get_channel(resultats_channel_id).send(strings['resultsAnnouncement'].format(server_logo,
+                                                                                               tournoi['name'],
+                                                                                               tournoi['url']))
         return
 
     for joueur in participants:
@@ -1544,24 +1539,18 @@ async def annonce_resultats():
     top8 = ' / '.join([y for x, y in resultats if x == 7])
 
     ending = random.choice([
-        "Bien joué à tous ! Quant aux autres : ne perdez pas espoir, ce sera votre tour un jour...",
-        "Merci à tous d'avoir participé, on se remet ça très bientôt ! Prenez soin de vous.",
-        "Félicitations à eux. N'oubliez pas que la clé est la persévérance ! Croyez toujours en vous.",
-        "Ce fut un plaisir en tant que bot d'aider à la gestion de ce tournoi et d'assister à vos merveileux sets."
+        strings['resultsAnnouncementEnding1'],
+        strings['resultsAnnouncementEnding2'],
+        strings['resultsAnnouncementEnding3'],
+        strings['resultsAnnouncementEnding4']
     ])
-    
-    classement = (f"{server_logo} **__Résultats du tournoi {tournoi['name']}__**\n\n"
-                  f":trophy: **1er** : **{resultats[0][1]}**\n"
-                  f":second_place: **2e** : {resultats[1][1]}\n"
-                  f":third_place: **3e** : {resultats[2][1]}\n"
-                  f":medal: **4e** : {resultats[3][1]}\n"
-                  f":reminder_ribbon: **5e** : {top6}\n"
-                  f":reminder_ribbon: **7e** : {top8}\n\n"
-                  f":bar_chart: {len(participants)} entrants\n"
-                  f"{gamelist[tournoi['game']]['icon']} {tournoi['game']}\n"
-                  f":link: **Bracket :** {tournoi['url']}\n\n"
-                  f"{ending}")
-    
+
+    classement = strings['resultsAnnouncementPlacings'].format(server_logo, tournoi['name'], resultats[0][1],
+                                                               resultats[1][1], resultats[2][1],
+                                                               resultats[3][1], top6, top8,
+                                                               len(participants), gamelist[tournoi['game']]['icon'],
+                                                               tournoi['game'], tournoi['url'], ending)
+
     await bot.get_channel(resultats_channel_id).send(classement)
 
 
@@ -1576,7 +1565,7 @@ async def attribution_role(event):
 
             try:
                 await event.member.add_roles(role)
-                await event.member.send(f"Le rôle **{role.name}** t'a été attribué avec succès : tu recevras des informations concernant les tournois *{game}* !")
+                await event.member.send(strings['rolePick1'].format(role.name, game))
             except (discord.HTTPException, discord.Forbidden):
                 pass
 
@@ -1585,7 +1574,7 @@ async def attribution_role(event):
 
             try:
                 await event.member.add_roles(role)
-                await event.member.send(f"Le rôle **{role.name}** t'a été attribué avec succès : tu seras contacté si un joueur cherche des combats sur *{game}* !")
+                await event.member.send(strings['rolePick2'].format(role.name, game))
             except (discord.HTTPException, discord.Forbidden):
                 pass
 
@@ -1603,7 +1592,7 @@ async def retirer_role(event):
 
             try:
                 await member.remove_roles(role)
-                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne recevras plus les informations concernant les tournois *{game}*.")
+                await member.send(strings['roleRemove1'].format(role.name, game))
             except (discord.HTTPException, discord.Forbidden):
                 pass
 
@@ -1612,7 +1601,7 @@ async def retirer_role(event):
 
             try:
                 await member.remove_roles(role)
-                await member.send(f"Le rôle **{role.name}** t'a été retiré avec succès : tu ne seras plus contacté si un joueur cherche des combats sur *{game}*.")
+                await member.send(strings['roleRemove2'].format(role.name, game))
             except (discord.HTTPException, discord.Forbidden):
                 pass
 
@@ -1653,11 +1642,14 @@ async def on_raw_reaction_remove(event):
 @bot.command(name='help', aliases=['info', 'version'])
 @commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_help(ctx):
-    await ctx.send(f"**{name} {version}** - *Made by {author} with* :heart:\n{help_text}\n")
+    await ctx.send(strings['helpText'].format(name, version, author, bot_prefix))
     author_roles = [y.id for y in ctx.author.roles]
-    if challenger_id in author_roles: await ctx.send(challenger_help_text) # challenger help
-    if to_id in author_roles or await ctx.bot.is_owner(ctx.author): await ctx.send(admin_help_text) # admin help
-    if streamer_id in author_roles: await ctx.send(streamer_help_text) # streamer help
+    if challenger_id in author_roles:
+        await ctx.send(strings['challengerHelpText'].format(bot_prefix))  # challenger help
+    if to_id in author_roles or await ctx.bot.is_owner(ctx.author):
+        await ctx.send(strings['adminHelpText'].format(bot_prefix))  # admin help
+    if streamer_id in author_roles:
+        await ctx.send(strings['streamerHelpText'].format(bot_prefix))  # streamer help
 
 
 ### Set preference
@@ -1669,7 +1661,7 @@ async def set_preference(ctx, arg1, arg2):
     try:
         if isinstance(preferences[arg1.lower()], bool):
             if arg2.lower() in ["true", "on"]:
-                preferences[arg1.lower()] = True 
+                preferences[arg1.lower()] = True
             elif arg2.lower() in ["false", "off"]:
                 preferences[arg1.lower()] = False
             else:
@@ -1679,16 +1671,16 @@ async def set_preference(ctx, arg1, arg2):
 
     except KeyError:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Paramètre inconnu :** `{arg1}`.")
+        await ctx.send(strings['preferences1'].format(ctx.author.id, arg1))
 
     except ValueError:
         await ctx.message.add_reaction("⚠️")
-        await ctx.send(f"<@{ctx.author.id}> **Valeur incorrecte :** `{arg2}`.")
+        await ctx.send(strings['preferences2'].format(ctx.author.id, arg2))
 
     else:
         with open(preferences_path, 'w') as f: yaml.dump(preferences, f)
         await ctx.message.add_reaction("✅")
-        await ctx.send(f"<@{ctx.author.id}> **Paramètre changé :** `{arg1} = {arg2}`.")
+        await ctx.send(strings['preferences3'].format(ctx.author.id, arg1, arg2))
 
 
 ### See preferences
@@ -1701,16 +1693,14 @@ async def check_settings(ctx):
     for parametre in preferences:
         parametres += f":white_small_square: **{parametre}** : *{preferences[parametre]}*\n"
 
-    await ctx.send(f":gear: __Liste des paramètres modifiables sans redémarrage__ :\n{parametres}\n"
-                   f"Vous pouvez modifier chacun de ces paramètres avec la commande `{bot_prefix}set [paramètre] [valeur]`.\n"
-                   f"*Ces paramètres ne s'appliquent qu'au moment de la création d'un tournoi, et ne peuvent pas changer jusqu'à sa fin.*")
+    await ctx.send(strings['settingsCheck'].format(parametres, bot_prefix))
 
 
 ### Desync message
 @bot.command(name='desync')
 @commands.cooldown(1, 30, type=commands.BucketType.user)
 async def send_desync_help(ctx):
-    await ctx.send(desync_text)
+    await ctx.send(strings['desyncText'])
 
 
 ### On command error : invoker has not enough permissions
@@ -1721,13 +1711,13 @@ async def on_command_error(ctx, error):
         await ctx.message.add_reaction("🚫")
     elif isinstance(error, (commands.MissingRequiredArgument, commands.ArgumentParsingError, commands.BadArgument)):
         await ctx.message.add_reaction("💿")
-        await ctx.send(f"<@{ctx.author.id}> Les paramètres de cette commande sont mal renseignés. Utilise `{bot_prefix}help` pour en savoir plus.", delete_after=10)
+        await ctx.send(strings['commandError1'].format(ctx.author.id, bot_prefix), delete_after=10)
     elif isinstance(error, commands.CommandOnCooldown):
         await ctx.message.add_reaction("❄️")
-        await ctx.send(f"<@{ctx.author.id}> **Cooldown** : cette commande sera de nouveau disponible pour toi dans {int(error.retry_after)} secondes.", delete_after=error.retry_after)
+        await ctx.send(strings['commandError2'].format(ctx.author.id, int(error.retry_after)), delete_after=error.retry_after)
     elif isinstance(error, commands.CommandNotFound) and show_unknown_command:
         await ctx.message.add_reaction("❔")
-        await ctx.send(f"<@{ctx.author.id}> Voulais-tu écrire autre chose ? Utilise `{bot_prefix}help` pour avoir la liste des commandes.", delete_after=10)
+        await ctx.send(strings['commandError3'].format(ctx.author.id, bot_prefix), delete_after=10)
     elif isinstance(error, commands.CommandInvokeError):
         log.error(f"Error while executing command {ctx.command.name}", exc_info=error)
         await ctx.message.add_reaction("⚠️")
