@@ -447,12 +447,6 @@ async def annonce_inscription():
     inscriptions_channel = bot.get_channel(inscriptions_channel_id)
     inscriptions_role = inscriptions_channel.guild.get_role(gamelist[tournoi['game']]['role']) if tournoi["restrict_to_role"] else inscriptions_channel.guild.default_role
 
-    if tournoi['reaction_mode']:
-        await inscriptions_channel.set_permissions(inscriptions_role, read_messages=True, send_messages=False, add_reactions=False)
-    else:
-        await inscriptions_channel.set_permissions(inscriptions_role, read_messages=True, send_messages=True, add_reactions=False)
-        await inscriptions_channel.edit(slowmode_delay=60)
-
     await inscriptions_channel.purge(limit=None)
 
     annonce_msg = await inscriptions_channel.send(annonce)
@@ -463,6 +457,12 @@ async def annonce_inscription():
         await annonce_msg.add_reaction("✅")
     
     await annonce_msg.pin()
+
+    if tournoi['reaction_mode']:
+        await inscriptions_channel.set_permissions(inscriptions_role, read_messages=True, send_messages=False, add_reactions=False)
+    else:
+        await inscriptions_channel.set_permissions(inscriptions_role, read_messages=True, send_messages=True, add_reactions=False)
+        await inscriptions_channel.edit(slowmode_delay=60)
 
     await bot.get_channel(annonce_channel_id).send(f"{server_logo} Inscriptions pour le **{tournoi['name']}** ouvertes dans <#{inscriptions_channel_id}> ! Consultez-y les messages épinglés. <@&{gamelist[tournoi['game']]['role']}>\n"
                                                    f":calendar_spiral: Ce tournoi aura lieu le **{format_date(tournoi['début_tournoi'], format='full', locale=language)} à {format_time(tournoi['début_tournoi'], format='short', locale=language)}**.")
