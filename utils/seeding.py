@@ -56,20 +56,22 @@ async def seed_participants(participants):
         except KeyError:
             participants[joueur]['elo'] = base_elo # base Elo if none found
 
-    # Sort!
+    # Sort & clean & make a composite list (to avoid "414 Request-URI Too Large")
     sorted_participants = sorted(participants.items(), key=lambda k_v: k_v[1]['elo'], reverse=True)
     sorted_participants = [x[1]['display_name'] for x in sorted_participants]
+    sorted_participants = [sorted_participants[x:x+(50)] for x in range(0, len(sorted_participants),50)]
 
-    # Send to Challonge
-    challonge_participants = await async_http_retry(
-        achallonge.participants.bulk_add,
-        tournoi['id'],
-        sorted_participants
-    )
+    # Send to Challonge and assign IDs
+    for chunk_participants in sorted_participants:
 
-    # Assign IDs
-    for inscrit in challonge_participants:
-        for joueur in participants:
-            if inscrit['name'] == participants[joueur]['display_name']:
-                participants[joueur]['challonge'] = inscrit['id']
-                break
+        challonge_participants = await async_http_retry(
+            achallonge.participants.bulk_add,
+            tournoi['id'],
+            chunk_participants
+        )
+
+        for inscrit in challonge_participants:
+            for joueur in participants:
+                if inscrit['name'] == participants[joueur]['display_name']:
+                    participants[joueur]['challonge'] = inscrit['id']
+                    break
