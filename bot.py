@@ -27,7 +27,7 @@ from utils.raw_texts import *
 log = logging.getLogger("atos")
 
 #### Infos
-version = "5.23"
+version = "5.24"
 author = "Wonderfall"
 name = "A.T.O.S."
 
@@ -637,8 +637,11 @@ async def end_check_in():
         pass
 
     for inscrit in list(participants):
-        if participants[inscrit]["checked_in"] == False:
-            await desinscrire(guild.get_member(inscrit))
+        try:
+            if participants[inscrit]["checked_in"] == False:
+                await desinscrire(guild.get_member(inscrit))
+        except KeyError:
+            pass
 
     await bot.get_channel(inscriptions_channel_id).send(":information_source: **Les absents du check-in ont été retirés** : "
                                                         "des places sont peut-être libérées pour des inscriptions de dernière minute.\n")
