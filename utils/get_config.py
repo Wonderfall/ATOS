@@ -33,6 +33,7 @@ blabla_channel_id                   = int(config["discord"]["channels"]["blabla"
 annonce_channel_id                  = int(config["discord"]["channels"]["annonce"])
 check_in_channel_id                 = int(config["discord"]["channels"]["check_in"])
 inscriptions_channel_id             = int(config["discord"]["channels"]["inscriptions"])
+inscriptions_vip_channel_id         = int(config["discord"]["channels"]["inscriptionsvip"])
 scores_channel_id                   = int(config["discord"]["channels"]["scores"])
 stream_channel_id                   = int(config["discord"]["channels"]["stream"])
 queue_channel_id                    = int(config["discord"]["channels"]["queue"])

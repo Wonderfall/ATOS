@@ -1,2 +1,9 @@
 .vscode/settings.json
 utils/__pycache__/
+config/config.yml
+data/participants.json
+data/stream.json
+data/tournoi.json
+data/logs/atos.log
+data/logs/latest.log
+data/logs/previous.log
