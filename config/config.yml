@@ -16,14 +16,15 @@ paths: # can be left as default values
   preferences: config/preferences.yml
 
 discord:
-  secret:
-  guild:
-  prefix:
+  secret: 
+  guild: 
+  prefix: 
   channels:
     blabla:
     annonce:
     check_in:
     inscriptions:
+    inscriptionsvip:
     scores:
     stream:
     queue:
@@ -34,14 +35,14 @@ discord:
     roles:
     to:
   categories:
-    tournoi:
+    tournoi: 
   roles:
-    challenger:
-    to:
-    streamer:
+    challenger: 
+    to: 
+    streamer: 
   emojis:
-    logo:
+    logo: 
 
 challonge:
-  user:
-  api_key:
+  user: 
+  api_key: 
