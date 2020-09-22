@@ -986,13 +986,11 @@ async def get_available_category(match_round):
         return category
 
     else:
-        new_category = await guild.create_category(
+        return await guild.create_category(
             name=desired_cat,
-            reason='Since no category was available, a new one was created'
+            reason='Since no category was available, a new one was created',
+            position=guild.get_channel(tournoi_cat_id).position + 1
         )
-        # kwarg 'position' will be supported in next discord.py release, for now we have to edit
-        await new_category.edit(position = guild.get_channel(tournoi_cat_id).position + 1)
-        return new_category
 
 
 ### Lancer matchs ouverts
