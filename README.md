@@ -1,5 +1,7 @@
 # A.T.O.S. - Automated Tournament Organizer for Smash
 
+:warning: **A.T.O.S. is now evolving thanks to the effort of El Laggron! It should be faster, cleaner, and can be invited to several servers. It's now a [cog](https://github.com/retke/Laggrons-Dumb-Cogs) that can be a part of a [Red-Discord bot](https://github.com/Cog-Creators/Red-DiscordBot) instance. [More info here](https://atos.laggron.red/).**
+
 <p align="center">
   <img src="https://i.imgur.com/2lEbl9Y.png">
 </p>
